@@ -9,6 +9,20 @@ import { AuthModule } from './core/auth/auth.module';
 import { LoggerModule } from './common/logging/logger.module';
 import { HealthModule } from './core/health/health.module';
 import { MigrationsModule } from './core/migrations/migrations.module';
+import { ProjectController } from './features/projects/controllers/project.controller';
+import { ProjectService } from './features/projects/services/project.service';
+import { DatasetController } from './features/datasets/controllers/dataset.controller';
+import { DatasetService } from './features/datasets/services/dataset.service';
+import {
+  ProjectEntity,
+  DatasetEntity,
+  ElementEntity,
+  GenerationJobEntity,
+  RecordEntity,
+  ElementInstanceEntity,
+  FieldValueEntity,
+  AnnotationEntity,
+} from './shared/entities';
 
 @Module({
   imports: [
@@ -27,6 +41,16 @@ import { MigrationsModule } from './core/migrations/migrations.module';
         synchronize: configService.get<string>('environment') !== 'production',
       }),
     }),
+    TypeOrmModule.forFeature([
+      ProjectEntity,
+      DatasetEntity,
+      ElementEntity,
+      GenerationJobEntity,
+      RecordEntity,
+      ElementInstanceEntity,
+      FieldValueEntity,
+      AnnotationEntity,
+    ]),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => [
@@ -40,7 +64,7 @@ import { MigrationsModule } from './core/migrations/migrations.module';
     HealthModule,
     MigrationsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, ProjectController, DatasetController],
+  providers: [AppService, ProjectService, DatasetService],
 })
 export class AppModule {}

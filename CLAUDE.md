@@ -4,23 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a full-stack notes application with:
+Syndata is a full-stack application for creating synthetic data for ML model training and evaluation with:
 - **Backend**: NestJS (Node.js/TypeScript) REST API on port 3000
-- **Frontend**: Angular 19 (TypeScript/SCSS) standalone components
+- **Frontend**: Angular 19 (TypeScript/SCSS) standalone components for data generation UI
 
 ## Project Structure
 
 ```
-mynotes/
-├── backend/          # NestJS backend application
+syndata/
+├── backend/          # NestJS backend API for data generation
 │   ├── src/         # Source code (controllers, services, modules)
 │   └── test/        # E2E and unit tests
-├── frontend/        # Angular frontend application
+├── frontend/        # Angular frontend UI for generation configuration
 │   └── src/         # Source code (components, services, routes)
+├── docker/          # Docker configuration and database initialization
+├── docker-compose.yml
 └── package.json     # Root package (contains Angular CLI)
 ```
 
 ## Development Commands
+
+### Quick Start (Recommended)
+
+```bash
+# Terminal 1: Start database only
+docker compose up -d postgres
+
+# Terminal 2: Start backend
+cd backend && npm run start:dev
+
+# Terminal 3: Start frontend
+cd frontend && npm start
+
+# Access the app at http://localhost:4200
+# API docs at http://localhost:3000/api/docs
+```
 
 ### Backend (NestJS)
 
@@ -38,19 +56,25 @@ npm run start:debug   # Debug mode with watch
 
 # Build
 npm run build         # Compile TypeScript to dist/
-
-# Production
 npm run start:prod    # Run compiled code from dist/
 
 # Testing
-npm run test          # Unit tests (Jest)
-npm run test:watch    # Unit tests in watch mode
-npm run test:cov      # Unit tests with coverage
-npm run test:e2e      # End-to-end tests
+npm run test          # Run all unit/integration tests
+npm run test:watch    # Tests in watch mode
+npm run test:cov      # Tests with coverage report
+npm run test:e2e      # Run E2E tests
+npm run test -- auth-service.integration.spec  # Run specific test file
+npm run test -- --testNamePattern="specific test name"  # Run specific test
 
 # Code Quality
 npm run lint          # ESLint with auto-fix
 npm run format        # Prettier formatting
+```
+
+**Test Database Setup:**
+```bash
+# Create test database (requires PostgreSQL running)
+docker exec mynotes-postgres psql -U mynotes_user -d postgres -c "CREATE DATABASE mynotes_test;"
 ```
 
 ### Frontend (Angular)
@@ -72,25 +96,92 @@ npm run watch         # Development build with watch mode
 
 # Testing
 npm test              # Karma unit tests
+ng test               # Angular CLI tests
+
+# Code scaffolding (Angular CLI)
+ng generate component features/my-feature/my-component
+ng generate service shared/services/my-service
 ```
+
+## API Documentation
+
+The backend exposes Swagger API documentation:
+
+```
+http://localhost:3000/api/docs
+```
+
+This documentation is automatically generated from NestJS decorators and includes:
+- All available endpoints
+- Request/response schemas
+- Authentication requirements (Bearer token)
+- Try-it-out functionality
 
 ## Architecture Notes
 
 ### Backend (NestJS)
 
-- **Module-based architecture**: Features organized in modules with controllers, services, and providers
-- **Dependency injection**: Use constructor injection for services
-- **Port configuration**: Backend runs on port 3000 (configurable via PORT env var)
-- **Entry point**: `src/main.ts` bootstraps the NestJS application
-- **Root module**: `src/app.module.ts`
+**Module Organization:**
+- **Core modules** (`src/core/`): Essential features like auth, health checks, migrations
+- **Common utilities** (`src/common/`): Shared filters, pipes, utilities
+- **Config module** (`src/config/`): Environment and configuration management
+- **Hello-world module**: Example feature module with controller and service
+
+**Module Pattern:**
+```
+feature-module/
+├── feature.module.ts          # Module definition with imports/providers
+├── feature.controller.ts       # HTTP endpoints
+├── feature.service.ts          # Business logic
+├── dto/                        # Data Transfer Objects (validation DTOs)
+├── guards/                     # NestJS guards (auth, roles)
+├── interfaces/                 # TypeScript interfaces
+└── strategies/                 # Passport strategies
+```
+
+**Key Patterns:**
+- **Dependency injection**: Use constructor injection for all services
+- **Validation**: DTOs with `class-validator` decorators for automatic validation
+- **Error handling**: Global exception filter in `src/common/filters/http-exception.filter.ts`
+- **Logging**: Winston logger via `nest-winston` integration
+- **Database**: TypeORM with PostgreSQL; entities auto-synced in development
+
+**Key Files:**
+- **Entry point**: `src/main.ts` - Bootstraps application with validation, CORS, Swagger
+- **Root module**: `src/app.module.ts` - Imports all feature modules
+- **Database config**: `src/app.module.ts` - TypeORM configuration with async factory
+- **Configuration**: `src/config/config.module.ts` - Centralized config management
 
 ### Frontend (Angular)
 
-- **Standalone components**: Angular 19 uses standalone component architecture (no NgModules)
-- **SCSS styling**: Component styles use SCSS syntax
-- **Routing**: Configured in `src/app/app.routes.ts`
-- **Configuration**: `src/app/app.config.ts` provides application-wide providers
-- **Component prefix**: `app` (defined in `angular.json`)
+**Project Structure:**
+```
+src/app/
+├── features/            # Feature modules with lazy-loaded routes
+├── shared/              # Shared services, utilities, interceptors
+├── core/                # Singleton services (auth, HTTP)
+├── layout/              # Layout components (nav, header)
+├── environments/        # Environment-specific configurations
+├── app.routes.ts        # Main routing configuration
+├── app.config.ts        # Application-wide providers (interceptors, etc.)
+└── app.component.ts     # Root component
+```
+
+**Key Patterns:**
+- **Standalone components**: Angular 19 standalone API (no NgModules)
+- **Feature routing**: Lazy-loaded feature modules via `providers` in routes
+- **Service organization**:
+  - `core/`: Singleton services (auth, HTTP client)
+  - `shared/`: Reusable services, pipes, directives
+- **SCSS styling**: Component-scoped styles via `.component.scss`
+- **Interceptors**: HTTP request/response handling via Angular interceptors
+- **RxJS**: Reactive patterns with `Subject`, `Observable`, `async` pipe
+
+**Key Files:**
+- **Routing**: `src/app/app.routes.ts` - All route definitions and lazy loading
+- **Config**: `src/app/app.config.ts` - Providers including HTTP interceptors
+- **Environment**: `src/app/environments/environment.ts` - API endpoint configuration
+- **Root**: `src/app/app.component.ts` - Router outlet and main layout
 
 ## Environment Configuration
 
@@ -315,3 +406,148 @@ Backend is configured to accept requests from:
 - Backend and frontend use volume mounts in development for live code reloading
 - The `pgvector` extension is automatically enabled on first database initialization
 - Use `docker compose down -v` to completely reset the database
+
+## Common Development Workflows
+
+### Adding a New Feature (Backend)
+
+1. **Create a new module** in `src/core/` or as a feature module
+2. **Define DTOs** in `feature/dto/` for request/response validation
+3. **Create entity** in database folder for TypeORM
+4. **Implement service** with business logic
+5. **Create controller** with HTTP endpoints
+6. **Register module** in `src/app.module.ts`
+7. **Add tests** (`.spec.ts` and `.e2e-spec.ts` files)
+8. **Run tests**: `npm run test` and `npm run test:e2e`
+9. **Check coverage**: `npm run test:cov`
+
+### Adding a New Component (Frontend)
+
+1. **Use Angular CLI**: `ng generate component features/my-feature/my-component`
+2. **Implement component** as standalone with `standalone: true`
+3. **Create service** if needed: `ng generate service shared/services/my-service`
+4. **Add to routes** in `src/app/app.routes.ts`
+5. **Import dependencies** in component's `imports: []` array
+6. **Style with SCSS**: Component-scoped `.scss` file
+7. **Add unit tests**: `*.spec.ts` following Angular testing patterns
+
+### Running Tests Effectively
+
+**Backend:**
+```bash
+cd backend
+
+# All tests
+npm run test
+
+# Specific test file
+npm run test -- auth-service.integration.spec
+
+# Tests matching a pattern
+npm run test -- --testNamePattern="should validate email"
+
+# Watch mode (re-runs on file changes)
+npm run test:watch
+
+# With coverage report
+npm run test:cov
+
+# E2E tests (requires test database)
+npm run test:e2e
+```
+
+**Frontend:**
+```bash
+cd frontend
+
+# Run all tests
+npm test
+
+# Watch mode (Karma)
+npm test -- --watch
+```
+
+### Debugging
+
+**Backend:**
+```bash
+cd backend
+
+# Run in debug mode with watch
+npm run start:debug
+
+# Then connect debugger (Chrome DevTools, VS Code, etc.)
+# Available at chrome://inspect
+```
+
+**Frontend:**
+- Use Chrome DevTools (F12 in browser at http://localhost:4200)
+- Source maps are available in development mode
+- Use Angular DevTools extension for component inspection
+
+### Database Management
+
+**Check database state:**
+```bash
+# Connect to development database
+docker exec mynotes-postgres psql -U mynotes_user -d mynotes
+
+# View tables
+\dt
+
+# Query users (example)
+SELECT * FROM "user";
+
+# Exit
+\q
+```
+
+**Reset database:**
+```bash
+# Stop and remove all volumes
+docker compose down -v
+
+# Start fresh
+docker compose up -d postgres
+```
+
+**TypeORM synchronization:**
+- In development (`NODE_ENV !== 'production'`), database schema auto-syncs with entities
+- In production, you must handle migrations manually
+- See `src/core/migrations/` for any custom migration scripts
+
+## Code Organization Guidelines
+
+### Backend
+
+- **Controllers**: HTTP endpoint definitions with request validation
+- **Services**: Business logic, database operations, external integrations
+- **DTOs**: Input/output validation using `class-validator`
+- **Entities**: TypeORM models mapped to database tables
+- **Guards**: Authentication and authorization logic
+- **Interfaces**: Type contracts for services
+- **Strategies**: Passport authentication strategies
+
+### Frontend
+
+- **Components**: UI presentation (`.component.ts`, `.component.html`, `.component.scss`)
+- **Services**: Data fetching, state management (typically in `shared/` or `core/`)
+- **Interceptors**: HTTP request/response middleware
+- **Routes**: Navigation and lazy-loaded module definitions
+- **Environments**: Deployment-specific configuration
+
+## Testing Guidelines
+
+### Backend
+
+- **Unit tests**: Test individual services with mocked dependencies (`.spec.ts`)
+- **Integration tests**: Test services with real database or mock repository (`.integration.spec.ts`)
+- **E2E tests**: Test full API flows with real database (`.e2e-spec.ts`)
+- **Coverage**: Aim for >80% on critical paths; exclude DTOs, modules, main.ts
+
+### Frontend
+
+- **Unit tests**: Test component logic, service methods using Karma + Jasmine
+- **Test bed**: Set up testing module with required providers and dependencies
+- **Async**: Use `fakeAsync`, `tick`, or `async` for time-dependent tests
+- **HttpClientTestingModule**: Mock HTTP requests in tests

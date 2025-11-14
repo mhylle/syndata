@@ -1,72 +1,25 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { HelloWorldService, HelloWorld } from './features/notes/services/hello-world.service';
 import { LoginDialogComponent } from './features/auth/components/login-dialog.component';
 import { AuthService } from './core/auth/services';
 import { User } from './core/auth/models';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, FormsModule, CommonModule, LoginDialogComponent],
+  imports: [RouterOutlet, CommonModule, LoginDialogComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   @ViewChild(LoginDialogComponent) loginDialog!: LoginDialogComponent;
 
-  title = 'MyNotes';
-  text = '';
-  helloWorlds: HelloWorld[] = [];
-  loading = false;
-  error = '';
+  title = 'syndata';
 
-  constructor(
-    private helloWorldService: HelloWorldService,
-    private authService: AuthService
-  ) {}
+  constructor(private authService: AuthService) {}
 
   get currentUser$() {
     return this.authService.currentUser$;
-  }
-
-  ngOnInit(): void {
-    this.loadHelloWorlds();
-  }
-
-  loadHelloWorlds(): void {
-    this.loading = true;
-    this.error = '';
-    this.helloWorldService.getAll().subscribe({
-      next: (data) => {
-        this.helloWorlds = data;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Failed to load data: ' + err.message;
-        this.loading = false;
-      }
-    });
-  }
-
-  onSubmit(): void {
-    if (!this.text.trim()) {
-      return;
-    }
-
-    this.loading = true;
-    this.error = '';
-    this.helloWorldService.create(this.text).subscribe({
-      next: () => {
-        this.text = '';
-        this.loadHelloWorlds();
-      },
-      error: (err) => {
-        this.error = 'Failed to save: ' + err.message;
-        this.loading = false;
-      }
-    });
   }
 
   openLogin(): void {

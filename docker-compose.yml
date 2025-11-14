@@ -4,19 +4,19 @@ services:
   # PostgreSQL Database with pgvector - Always needed
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: mynotes-postgres
+    container_name: syndata-postgres
     restart: unless-stopped
     ports:
       - "11003:5432"
     environment:
-      POSTGRES_DB: mynotes
-      POSTGRES_USER: mynotes_user
-      POSTGRES_PASSWORD: mynotes_password
+      POSTGRES_DB: syndata
+      POSTGRES_USER: syndata_user
+      POSTGRES_PASSWORD: syndata_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mynotes_user -d mynotes"]
+      test: ["CMD-SHELL", "pg_isready -U syndata_user -d syndata"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mynotes-backend
+    container_name: syndata-backend
     restart: unless-stopped
     ports:
       - "11002:3000"
@@ -35,12 +35,12 @@ services:
       PORT: 3000
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
-      DATABASE_NAME: mynotes
-      DATABASE_USER: mynotes_user
-      DATABASE_PASSWORD: mynotes_password
-      JWT_SECRET: dev-secret-key-change-in-production-b8f3a9c2d1e4
-      AUTH_MODE: local
-      AUTH_SERVICE_URL: https://mhylle.com/api/auth
+      DATABASE_NAME: syndata
+      DATABASE_USER: syndata_user
+      DATABASE_PASSWORD: syndata_password
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-https://auth.example.com/api/auth}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -54,7 +54,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mynotes-frontend
+    container_name: syndata-frontend
     restart: unless-stopped
     ports:
       - "11001:4200"

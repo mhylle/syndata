@@ -5,7 +5,6 @@ import { ConfigModule as AppConfigModule } from './config/config.module';
 import { ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { HelloWorldModule } from './hello-world/hello-world.module';
 import { AuthModule } from './core/auth/auth.module';
 import { LoggerModule } from './common/logging/logger.module';
 import { HealthModule } from './core/health/health.module';
@@ -37,7 +36,6 @@ import { MigrationsModule } from './core/migrations/migrations.module';
         },
       ],
     }),
-    HelloWorldModule,
     AuthModule,
     HealthModule,
     MigrationsModule,

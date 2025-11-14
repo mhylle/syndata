@@ -13,46 +13,9 @@
     </div>
   </header>
 
-  <div class="card">
-    <h2>Add New Message</h2>
-    <form (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label for="text">Enter your message:</label>
-        <input
-          type="text"
-          id="text"
-          name="text"
-          [(ngModel)]="text"
-          placeholder="Type something..."
-          [disabled]="loading"
-          class="input-text"
-        />
-      </div>
-      <button type="submit" [disabled]="loading || !text.trim()" class="btn-primary">
-        {{ loading ? 'Saving...' : 'Submit' }}
-      </button>
-    </form>
-
-    <div *ngIf="error" class="error">{{ error }}</div>
-  </div>
-
-  <div class="card">
-    <h2>Saved Messages</h2>
-
-    <div *ngIf="loading && helloWorlds.length === 0" class="loading">Loading...</div>
-
-    <div *ngIf="!loading && helloWorlds.length === 0" class="empty">
-      No messages yet. Add one above!
-    </div>
-
-    <div class="messages-list">
-      <div *ngFor="let item of helloWorlds" class="message-item">
-        <div class="message-text">{{ item.text }}</div>
-        <div class="message-date">{{ item.createdAt | date:'short' }}</div>
-      </div>
-    </div>
-  </div>
+  <main class="main-content">
+    <router-outlet />
+  </main>
 </div>
 
 <app-login-dialog></app-login-dialog>
-<router-outlet />

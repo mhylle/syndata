@@ -43,8 +43,8 @@ async function bootstrap() {
 
   // Setup Swagger API Documentation
   const config = new DocumentBuilder()
-    .setTitle('MyNotes API')
-    .setDescription('API documentation for the MyNotes application')
+    .setTitle('Syndata API')
+    .setDescription('API documentation for the Syndata application')
     .setVersion('1.0')
     .addTag('Auth', 'Authentication endpoints')
     .addTag('Notes', 'Notes management endpoints')

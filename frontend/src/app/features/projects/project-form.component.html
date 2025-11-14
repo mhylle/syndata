@@ -1,0 +1,15 @@
+<form (ngSubmit)="submit()" class="project-form">
+  <div class="form-group">
+    <label for="name">Project Name *</label>
+    <input [(ngModel)]="form.name" type="text" id="name" name="name" placeholder="Enter project name" required />
+  </div>
+
+  <div class="form-group">
+    <label for="description">Description</label>
+    <textarea [(ngModel)]="form.description" id="description" name="description" placeholder="Enter project description" rows="3"></textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create Project</button>
+  </div>
+</form>

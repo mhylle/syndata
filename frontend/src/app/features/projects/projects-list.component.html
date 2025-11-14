@@ -1,0 +1,39 @@
+<div class="projects-container">
+  <div class="projects-header">
+    <h1>Projects</h1>
+    <button (click)="showForm = !showForm" class="btn btn-primary">
+      {{ showForm ? 'Cancel' : 'New Project' }}
+    </button>
+  </div>
+
+  <div *ngIf="showForm" class="form-container">
+    <app-project-form (onSubmit)="onCreateProject($event)"></app-project-form>
+  </div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+
+  <div class="search-bar">
+    <input [(ngModel)]="searchText" type="text" placeholder="Search projects..." class="search-input" />
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading projects...</div>
+
+  <div *ngIf="!loading && filteredProjects.length === 0" class="empty-state">
+    <p>No projects found. Create one to get started!</p>
+  </div>
+
+  <div *ngIf="!loading && filteredProjects.length > 0" class="projects-grid">
+    <div *ngFor="let project of filteredProjects" class="project-card">
+      <div class="card-header">
+        <h3>{{ project.name }}</h3>
+        <span class="dataset-count">{{ project.datasets?.length || 0 }} datasets</span>
+      </div>
+      <p class="card-description">{{ project.description || 'No description' }}</p>
+      <div class="card-date">{{ project.createdAt | date:'short' }}</div>
+      <div class="card-actions">
+        <a [routerLink]="['/projects', project.id]" class="btn btn-small btn-secondary">View</a>
+        <button (click)="deleteProject(project.id)" class="btn btn-small btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

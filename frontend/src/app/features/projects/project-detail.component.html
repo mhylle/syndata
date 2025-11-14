@@ -1,0 +1,26 @@
+<div class="project-detail">
+  <a routerLink="/projects" class="back-link">← Back to Projects</a>
+
+  <div *ngIf="loading" class="loading">Loading project...</div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+
+  <div *ngIf="project && !loading" class="project-info">
+    <h1>{{ project.name }}</h1>
+    <p class="description">{{ project.description || 'No description' }}</p>
+    <p class="meta">Created: {{ project.createdAt | date:'full' }}</p>
+
+    <div class="section">
+      <h2>Datasets ({{ project.datasets?.length || 0 }})</h2>
+      <div *ngIf="!project.datasets || project.datasets.length === 0" class="empty">
+        <p>No datasets in this project yet.</p>
+      </div>
+      <div *ngIf="project.datasets && project.datasets.length > 0" class="datasets-list">
+        <div *ngFor="let dataset of project.datasets" class="dataset-item">
+          <strong>{{ dataset.name }}</strong>
+          <span class="badge">{{ dataset.elements?.length || 0 }} elements</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

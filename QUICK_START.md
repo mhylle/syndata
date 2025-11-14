@@ -226,6 +226,38 @@ syndata/
 
 ---
 
+---
+
+## 🐛 Known Issues & Fixes
+
+### Issue 1: Dataset Creation Failed (FIXED ✅)
+**Previous Error:** `QueryFailedError: null value in column 'schemaDefinition' violates not-null constraint`
+
+**Root Cause:** DTO field name mismatch (`schema` vs `schemaDefinition`)
+
+**Status:** FIXED in commit `6d5448a`
+
+**What Changed:** DatasetService now properly maps `schema` field from DTO to `schemaDefinition` in entity
+
+**No Action Required** - Already deployed to Docker
+
+---
+
+### Issue 2: Dataset Count Not Displaying (FIXED ✅)
+**Previous Issue:** Projects page showed "0 datasets" even with datasets present
+
+**Root Cause:** ProjectService not loading datasets relation from database
+
+**Status:** FIXED in commit `6d5448a`
+
+**What Changed:** ProjectService.findAll() and findOne() now load datasets relation
+
+**Result:** Frontend correctly displays dataset counts in project cards
+
+**No Action Required** - Already deployed to Docker
+
+---
+
 ## ✅ Verification
 
 After starting, verify everything is working:

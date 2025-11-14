@@ -1,1 +1,2 @@
-// Export all shared models
+// frontend/src/app/shared/models/index.ts
+export * from './api.models';

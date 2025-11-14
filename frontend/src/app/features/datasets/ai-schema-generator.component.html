@@ -1,0 +1,208 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>AI Schema Generator</h2>
+      <button class="close-btn" (click)="onClose()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Error message -->
+      <div *ngIf="error" class="error-message">{{ error }}</div>
+
+      <!-- Step 1: Description -->
+      <div *ngIf="currentStep === 'description'" class="step-content">
+        <div class="step-header">
+          <h3>Step 1: Describe Your Dataset</h3>
+          <p>Tell us about the synthetic data you want to generate</p>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Dataset Description *</label>
+          <textarea
+            id="description"
+            [(ngModel)]="description"
+            rows="4"
+            placeholder="Describe what kind of data you want to generate (e.g., 'customer profiles for an e-commerce site')"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="businessContext">Business Context</label>
+          <textarea
+            id="businessContext"
+            [(ngModel)]="businessContext"
+            rows="3"
+            placeholder="Provide business context or use case (optional)"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="targetRecordCount">Target Record Count</label>
+          <input
+            id="targetRecordCount"
+            type="number"
+            [(ngModel)]="targetRecordCount"
+            placeholder="How many records do you need?"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="domainExpertise">Domain Expertise</label>
+          <input
+            id="domainExpertise"
+            type="text"
+            [(ngModel)]="domainExpertise"
+            placeholder="Any specific domain knowledge or requirements? (optional)"
+          />
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-secondary" (click)="onClose()">Cancel</button>
+          <button
+            class="btn btn-primary"
+            (click)="startConversation()"
+            [disabled]="loading || !description.trim()"
+          >
+            {{ loading ? 'Processing...' : 'Start Conversation' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Questions -->
+      <div *ngIf="currentStep === 'questions'" class="step-content">
+        <div class="step-header">
+          <h3>Step 2: Answer Clarifying Questions</h3>
+          <p>Help us refine your schema by answering these questions</p>
+        </div>
+
+        <div class="questions-container">
+          <div *ngFor="let question of clarifyingQuestions" class="question-card">
+            <div class="question-header">
+              <label>{{ question.question }}</label>
+              <span class="question-reasoning">{{ question.reasoning }}</span>
+            </div>
+
+            <!-- Text input -->
+            <input
+              *ngIf="question.questionType === 'text'"
+              type="text"
+              [value]="getAnswerValue(question.id)"
+              (input)="setAnswerValue(question.id, $any($event.target).value)"
+              placeholder="Enter your answer"
+            />
+
+            <!-- Number input -->
+            <input
+              *ngIf="question.questionType === 'number'"
+              type="number"
+              [value]="getAnswerValue(question.id)"
+              (input)="setAnswerValue(question.id, +$any($event.target).value)"
+              placeholder="Enter a number"
+            />
+
+            <!-- Boolean input -->
+            <div *ngIf="question.questionType === 'boolean'" class="checkbox-group">
+              <input
+                type="checkbox"
+                [id]="'check-' + question.id"
+                [checked]="getAnswerValue(question.id)"
+                (change)="setAnswerValue(question.id, $any($event.target).checked)"
+              />
+              <label [for]="'check-' + question.id">Yes</label>
+            </div>
+
+            <!-- Choice input -->
+            <select
+              *ngIf="question.questionType === 'choice'"
+              [value]="getAnswerValue(question.id)"
+              (change)="setAnswerValue(question.id, $any($event.target).value)"
+            >
+              <option value="">-- Select an option --</option>
+              <option *ngFor="let choice of question.choices" [value]="choice">
+                {{ choice }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-secondary" (click)="goBack()">Back</button>
+          <button
+            class="btn btn-primary"
+            (click)="refineSchema()"
+            [disabled]="loading"
+          >
+            {{ loading ? 'Generating...' : 'Continue' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Review -->
+      <div *ngIf="currentStep === 'review'" class="step-content">
+        <div class="step-header">
+          <h3>Step 3: Review Generated Schema</h3>
+          <p>Review and adjust the confidence threshold for components</p>
+        </div>
+
+        <div *ngIf="schema" class="schema-review">
+          <div class="schema-info">
+            <div class="info-item">
+              <strong>Name:</strong> {{ schema.name }}
+            </div>
+            <div class="info-item">
+              <strong>Description:</strong> {{ schema.description }}
+            </div>
+            <div class="info-item">
+              <strong>Target Records:</strong> {{ schema.targetRecordCount }}
+            </div>
+          </div>
+
+          <div class="confidence-filter">
+            <label for="minConfidence">
+              Minimum Confidence: {{ minConfidence }}%
+            </label>
+            <input
+              id="minConfidence"
+              type="range"
+              min="0"
+              max="100"
+              [(ngModel)]="minConfidence"
+              (input)="onConfidenceChange()"
+            />
+            <span class="filter-info">
+              Showing {{ filteredComponents.length }} of {{ schema.components.length }} components
+            </span>
+          </div>
+
+          <div class="components-container">
+            <h4>Schema Components</h4>
+            <div *ngFor="let component of filteredComponents" class="component-card">
+              <div class="component-header">
+                <strong>{{ component.name }}</strong>
+                <span class="component-type">{{ component.dataType }}</span>
+                <span class="confidence-badge" [class.high-confidence]="component.confidence >= 80">
+                  {{ component.confidence }}%
+                </span>
+              </div>
+              <p class="component-description">{{ component.description }}</p>
+              <p class="component-reasoning">
+                <em>Reasoning: {{ component.reasoning }}</em>
+              </p>
+              <div *ngIf="component.constraints" class="component-constraints">
+                <strong>Constraints:</strong>
+                <pre>{{ component.constraints | json }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-secondary" (click)="regenerate()">Regenerate</button>
+          <button class="btn btn-primary" (click)="createDataset()">
+            Create Dataset
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

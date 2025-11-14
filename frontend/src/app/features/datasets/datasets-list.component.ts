@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/services/api.service';
-import { Dataset } from '../../shared/models/api.models';
+import { Dataset, SyntheticSchemaDto } from '../../shared/models/api.models';
+import { AISchemaGeneratorComponent } from './ai-schema-generator.component';
 
 @Component({
   selector: 'app-datasets-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, AISchemaGeneratorComponent],
   templateUrl: './datasets-list.component.html',
   styleUrls: ['./datasets-list.component.scss']
 })
@@ -17,6 +18,7 @@ export class DatasetsListComponent implements OnInit {
   loading = false;
   error: string | null = null;
   showForm = false;
+  showAIModal = false;
   newDataset = { name: '', schemaDefinition: {} };
   projects: any[] = [];
   selectedProjectId = '';
@@ -76,6 +78,31 @@ export class DatasetsListComponent implements OnInit {
       },
       error: (err) => {
         this.error = 'Failed to create dataset';
+        console.error(err);
+      }
+    });
+  }
+
+  openAISchemaGenerator(): void {
+    this.showAIModal = true;
+  }
+
+  closeAIModal(): void {
+    this.showAIModal = false;
+  }
+
+  onSchemaCreated(schema: SyntheticSchemaDto): void {
+    this.showAIModal = false;
+    // Create dataset with the generated schema
+    this.apiService.createDataset(this.selectedProjectId, {
+      name: schema.name,
+      schemaDefinition: schema
+    }).subscribe({
+      next: () => {
+        this.loadDatasets();
+      },
+      error: (err) => {
+        this.error = 'Failed to create dataset from generated schema';
         console.error(err);
       }
     });

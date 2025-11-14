@@ -1,9 +1,14 @@
 <div class="datasets-container">
   <div class="datasets-header">
     <h1>Datasets</h1>
-    <button (click)="showForm = !showForm" class="btn btn-primary">
-      {{ showForm ? 'Cancel' : 'New Dataset' }}
-    </button>
+    <div class="button-group">
+      <button (click)="openAISchemaGenerator()" class="btn btn-ai" [disabled]="!selectedProjectId">
+        <span class="ai-icon">✨</span> Generate with AI
+      </button>
+      <button (click)="showForm = !showForm" class="btn btn-primary">
+        {{ showForm ? 'Cancel' : 'New Dataset' }}
+      </button>
+    </div>
   </div>
 
   <div class="project-selector">
@@ -51,4 +56,12 @@
       </tbody>
     </table>
   </div>
+
+  <!-- AI Schema Generator Modal -->
+  <app-ai-schema-generator
+    *ngIf="showAIModal"
+    [projectId]="selectedProjectId"
+    (close)="closeAIModal()"
+    (schemaCreated)="onSchemaCreated($event)"
+  ></app-ai-schema-generator>
 </div>

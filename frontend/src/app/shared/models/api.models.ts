@@ -57,3 +57,55 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
+
+// Schema generation models
+export interface GenerateSchemaDto {
+  description: string;
+  businessContext?: string;
+  targetRecordCount?: number;
+  domainExpertise?: string;
+}
+
+export interface ClarifyingQuestion {
+  id: string;
+  question: string;
+  questionType: 'text' | 'number' | 'boolean' | 'choice';
+  choices?: string[];
+  reasoning: string;
+}
+
+export interface GenerateSchemaResponse {
+  conversationId: string;
+  questions: ClarifyingQuestion[];
+}
+
+export interface RefineSchemaDto {
+  answers: { [key: string]: any };
+}
+
+export interface SchemaComponent {
+  name: string;
+  dataType: string;
+  description: string;
+  constraints?: any;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface SyntheticSchemaDto {
+  name: string;
+  description: string;
+  businessContext: string;
+  targetRecordCount: number;
+  components: SchemaComponent[];
+  relationships: any[];
+  metadata: {
+    conversationId: string;
+    clarifyingQuestions: ClarifyingQuestion[];
+    answers: { [key: string]: any };
+  };
+}
+
+export interface RefineSchemaResponse {
+  schema: SyntheticSchemaDto;
+}

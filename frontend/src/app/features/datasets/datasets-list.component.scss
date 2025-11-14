@@ -12,6 +12,11 @@
   h1 {
     margin: 0;
   }
+
+  .button-group {
+    display: flex;
+    gap: 1rem;
+  }
 }
 
 .project-selector {
@@ -108,6 +113,29 @@
   &.btn-primary {
     background: #667eea;
     color: white;
+  }
+
+  &.btn-ai {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .ai-icon {
+      font-size: 1.2rem;
+    }
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 
   &.btn-small {

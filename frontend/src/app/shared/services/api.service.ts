@@ -4,7 +4,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  Project, Dataset, Element, GenerationJob, Record, GenerateRequest
+  Project, Dataset, Element, GenerationJob, Record, GenerateRequest,
+  GenerateSchemaDto, GenerateSchemaResponse, RefineSchemaDto, RefineSchemaResponse
 } from '../models/api.models';
 
 @Injectable({
@@ -116,6 +117,22 @@ export class ApiService {
   getRecord(projectId: string, recordId: string): Observable<Record> {
     return this.http.get<Record>(
       `${this.baseUrl}/projects/${projectId}/records/${recordId}`
+    );
+  }
+
+  // ===== SCHEMA GENERATION =====
+
+  generateSchema(projectId: string, dto: GenerateSchemaDto): Observable<GenerateSchemaResponse> {
+    return this.http.post<GenerateSchemaResponse>(
+      `${this.baseUrl}/projects/${projectId}/schemas/generate`,
+      dto
+    );
+  }
+
+  refineSchema(projectId: string, conversationId: string, dto: RefineSchemaDto): Observable<RefineSchemaResponse> {
+    return this.http.post<RefineSchemaResponse>(
+      `${this.baseUrl}/projects/${projectId}/schemas/${conversationId}/refine`,
+      dto
     );
   }
 }

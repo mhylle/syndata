@@ -1,0 +1,43 @@
+// frontend/src/app/layout/sidebar/sidebar.component.scss
+.sidebar {
+  width: 250px;
+  background: #f5f7fa;
+  border-right: 1px solid #e0e6ed;
+  padding: 2rem 0;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #e8ecf1;
+  }
+
+  &.active {
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+  }
+}
+
+.nav-icon {
+  font-size: 1.2rem;
+}
+
+.nav-label {
+  flex: 1;
+}

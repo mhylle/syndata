@@ -1,0 +1,12 @@
+<!-- frontend/src/app/layout/header/header.component.html -->
+<header class="app-header">
+  <div class="header-content">
+    <h1 class="app-title">Syndata</h1>
+    <nav class="header-nav">
+      <span *ngIf="currentUser$ | async as user" class="user-info">
+        {{ user.email }}
+      </span>
+      <button (click)="logout()" class="logout-btn">Logout</button>
+    </nav>
+  </div>
+</header>

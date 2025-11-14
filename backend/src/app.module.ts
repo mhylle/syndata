@@ -13,6 +13,12 @@ import { ProjectController } from './features/projects/controllers/project.contr
 import { ProjectService } from './features/projects/services/project.service';
 import { DatasetController } from './features/datasets/controllers/dataset.controller';
 import { DatasetService } from './features/datasets/services/dataset.service';
+import { GenerationController } from './features/generation/controllers/generation.controller';
+import { GenerationService } from './features/generation/services/generation.service';
+import { ValidationService } from './features/generation/services/validation.service';
+import { PatternAnalyzerService } from './features/generation/services/pattern-analyzer.service';
+import { SimpleDataGeneratorService } from './features/generation/services/simple-data-generator.service';
+import { AnnotationService } from './features/generation/services/annotation.service';
 import {
   ProjectEntity,
   DatasetEntity,
@@ -64,7 +70,16 @@ import {
     HealthModule,
     MigrationsModule,
   ],
-  controllers: [AppController, ProjectController, DatasetController],
-  providers: [AppService, ProjectService, DatasetService],
+  controllers: [AppController, ProjectController, DatasetController, GenerationController],
+  providers: [
+    AppService,
+    ProjectService,
+    DatasetService,
+    GenerationService,
+    ValidationService,
+    PatternAnalyzerService,
+    SimpleDataGeneratorService,
+    AnnotationService,
+  ],
 })
 export class AppModule {}

@@ -18,7 +18,8 @@ export class DatasetService {
   async create(projectId: string, createDatasetDto: CreateDatasetDto): Promise<DatasetEntity> {
     const dataset = this.datasetRepository.create({
       projectId,
-      ...createDatasetDto,
+      name: createDatasetDto.name,
+      schemaDefinition: createDatasetDto.schema,
     });
     return this.datasetRepository.save(dataset);
   }

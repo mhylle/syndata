@@ -51,6 +51,34 @@
           <p>Created: {{ job.createdAt | date:'short' }}</p>
           <p *ngIf="job.completedAt">Completed: {{ job.completedAt | date:'short' }}</p>
         </div>
+        <div class="job-actions">
+          <button
+            *ngIf="job.status === 'completed'"
+            (click)="viewRecords(job)"
+            class="btn btn-view">
+            👁️ View Records
+          </button>
+          <span *ngIf="job.status !== 'completed'" class="btn-disabled">
+            👁️ View Records ({{ job.status }})
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Records Viewer Modal -->
+  <div *ngIf="viewingRecords && selectedJobForRecords" class="modal-overlay" (click)="closeRecordsViewer()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>View Generated Records</h2>
+        <button class="close-btn" (click)="closeRecordsViewer()">✕</button>
+      </div>
+      <div class="modal-body">
+        <app-records-viewer
+          [projectId]="selectedProjectId"
+          [jobId]="selectedJobForRecords.id"
+          [jobStatus]="selectedJobForRecords.status">
+        </app-records-viewer>
       </div>
     </div>
   </div>

@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/services/api.service';
 import { Dataset, GenerationJob, GenerateRequest } from '../../shared/models/api.models';
+import { RecordsViewerComponent } from './records-viewer.component';
 
 @Component({
   selector: 'app-generation',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RecordsViewerComponent],
   templateUrl: './generation.component.html',
   styleUrls: ['./generation.component.scss']
 })
@@ -22,6 +23,10 @@ export class GenerationComponent implements OnInit {
   generating = false;
   error: string | null = null;
   message: string | null = null;
+
+  // Records viewer state
+  viewingRecords = false;
+  selectedJobForRecords: GenerationJob | null = null;
 
   constructor(private apiService: ApiService) {}
 
@@ -110,5 +115,19 @@ export class GenerationComponent implements OnInit {
       'failed': '#dc3545'
     };
     return colors[status] || '#999';
+  }
+
+  viewRecords(job: GenerationJob): void {
+    if (job.status !== 'completed') {
+      this.error = 'Can only view records for completed jobs';
+      return;
+    }
+    this.selectedJobForRecords = job;
+    this.viewingRecords = true;
+  }
+
+  closeRecordsViewer(): void {
+    this.viewingRecords = false;
+    this.selectedJobForRecords = null;
   }
 }

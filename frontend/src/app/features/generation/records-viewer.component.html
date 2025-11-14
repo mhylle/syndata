@@ -1,0 +1,88 @@
+<div class="records-viewer">
+  <!-- Header -->
+  <div class="viewer-header">
+    <h2>Generated Records</h2>
+    <p class="job-info">Job ID: {{ jobId }} | Status: <span class="status-badge" [ngClass]="jobStatus">{{ jobStatus }}</span></p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="error-message">
+    {{ error }}
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading">
+    <p>Loading records...</p>
+  </div>
+
+  <!-- Controls -->
+  <div *ngIf="!loading && records.length > 0" class="controls">
+    <div class="left-controls">
+      <label>Page Size:</label>
+      <select [(ngModel)]="pageSize" (change)="changePageSize(pageSize)" class="page-size-select">
+        <option [value]="5">5 records</option>
+        <option [value]="10">10 records</option>
+        <option [value]="25">25 records</option>
+        <option [value]="50">50 records</option>
+      </select>
+    </div>
+
+    <div class="right-controls">
+      <button class="btn btn-export" (click)="exportToCSV()">📥 Export CSV</button>
+      <button class="btn btn-export" (click)="exportToJSON()">📥 Export JSON</button>
+    </div>
+  </div>
+
+  <!-- Column Selector -->
+  <div *ngIf="!loading && columns.length > 0" class="column-selector">
+    <label>Show/Hide Columns:</label>
+    <div class="column-checkboxes">
+      <label *ngFor="let column of columns" class="column-checkbox">
+        <input type="checkbox" [checked]="isColumnDisplayed(column)" (change)="toggleColumn(column)">
+        {{ column }}
+      </label>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div *ngIf="!loading && records.length > 0" class="table-container">
+    <table class="records-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th *ngFor="let column of displayColumns">{{ column }}</th>
+          <th>Generated At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let record of records; let i = index" class="record-row">
+          <td class="row-number">{{ (currentPage - 1) * pageSize + i + 1 }}</td>
+          <td *ngFor="let column of displayColumns" class="record-cell">
+            <span class="cell-value">{{ getValue(record, column) }}</span>
+          </td>
+          <td class="timestamp">{{ record.createdAt | date: 'short' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- No Records State -->
+  <div *ngIf="!loading && records.length === 0" class="no-records">
+    <p>No records found for this job.</p>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loading && records.length > 0" class="pagination">
+    <button class="btn btn-sm" [disabled]="currentPage === 1" (click)="previousPage()">
+      ← Previous
+    </button>
+
+    <div class="page-info">
+      Page <strong>{{ currentPage }}</strong>
+    </div>
+
+    <button class="btn btn-sm" [disabled]="records.length < pageSize" (click)="nextPage()">
+      Next →
+    </button>
+  </div>
+</div>

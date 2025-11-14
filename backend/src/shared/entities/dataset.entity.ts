@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 import { ProjectEntity } from './project.entity';
 import { ElementEntity } from './element.entity';
+import { SyntheticSchemaEntity } from './synthetic-schema.entity';
 
 @Entity('datasets')
 export class DatasetEntity {
@@ -24,4 +25,11 @@ export class DatasetEntity {
 
   @OneToMany(() => ElementEntity, element => element.dataset)
   elements: ElementEntity[];
+
+  @OneToOne(() => SyntheticSchemaEntity, (schema) => schema.dataset, {
+    nullable: true,
+    eager: false,
+  })
+  @JoinColumn()
+  syntheticSchema?: SyntheticSchemaEntity;
 }

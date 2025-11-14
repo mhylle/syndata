@@ -31,6 +31,7 @@ import {
   ElementInstanceEntity,
   FieldValueEntity,
   AnnotationEntity,
+  SyntheticSchemaEntity,
 } from './shared/entities';
 
 @Module({
@@ -59,6 +60,7 @@ import {
       ElementInstanceEntity,
       FieldValueEntity,
       AnnotationEntity,
+      SyntheticSchemaEntity,
     ]),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],

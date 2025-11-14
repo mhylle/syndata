@@ -8,3 +8,4 @@ export { RecordEntity } from './record.entity';
 export { ElementInstanceEntity } from './element-instance.entity';
 export { FieldValueEntity } from './field-value.entity';
 export { AnnotationEntity } from './annotation.entity';
+export { SyntheticSchemaEntity } from './synthetic-schema.entity';

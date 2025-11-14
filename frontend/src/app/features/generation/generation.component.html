@@ -1,0 +1,57 @@
+<div class="generation-container">
+  <h1>Synthetic Data Generation</h1>
+
+  <div class="generation-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Project:</label>
+        <select [(ngModel)]="selectedProjectId" (change)="onProjectChange()" class="select">
+          <option *ngFor="let p of projects" [value]="p.id">{{ p.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Dataset:</label>
+        <select [(ngModel)]="selectedDatasetId" class="select">
+          <option *ngFor="let d of datasets" [value]="d.id">{{ d.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Record Count:</label>
+        <input [(ngModel)]="recordCount" type="number" min="1" max="10000" class="input" />
+      </div>
+
+      <button (click)="generateData()" [disabled]="generating || !selectedDatasetId" class="btn btn-primary">
+        {{ generating ? 'Generating...' : 'Generate Data' }}
+      </button>
+    </div>
+
+    <div *ngIf="error" class="error-message">{{ error }}</div>
+    <div *ngIf="message" class="success-message">{{ message }}</div>
+  </div>
+
+  <div class="jobs-section">
+    <h2>Generation Jobs</h2>
+
+    <div *ngIf="generationJobs.length === 0" class="empty">
+      <p>No generation jobs yet.</p>
+    </div>
+
+    <div *ngIf="generationJobs.length > 0" class="jobs-list">
+      <div *ngFor="let job of generationJobs" class="job-card">
+        <div class="job-header">
+          <strong>{{ job.datasetId }}</strong>
+          <span class="status-badge" [style.background]="getStatusColor(job.status)">
+            {{ job.status }}
+          </span>
+        </div>
+        <div class="job-details">
+          <p>Records: <strong>{{ job.count }}</strong></p>
+          <p>Created: {{ job.createdAt | date:'short' }}</p>
+          <p *ngIf="job.completedAt">Completed: {{ job.completedAt | date:'short' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

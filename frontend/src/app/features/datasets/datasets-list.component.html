@@ -1,0 +1,54 @@
+<div class="datasets-container">
+  <div class="datasets-header">
+    <h1>Datasets</h1>
+    <button (click)="showForm = !showForm" class="btn btn-primary">
+      {{ showForm ? 'Cancel' : 'New Dataset' }}
+    </button>
+  </div>
+
+  <div class="project-selector">
+    <label>Select Project:</label>
+    <select [(ngModel)]="selectedProjectId" (change)="onProjectChange()" class="select">
+      <option *ngFor="let p of projects" [value]="p.id">{{ p.name }}</option>
+    </select>
+  </div>
+
+  <div *ngIf="showForm" class="form-container">
+    <div class="form-group">
+      <label>Dataset Name:</label>
+      <input [(ngModel)]="newDataset.name" type="text" placeholder="Enter dataset name" />
+    </div>
+    <button (click)="createDataset()" class="btn btn-primary">Create Dataset</button>
+  </div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+
+  <div *ngIf="loading" class="loading">Loading datasets...</div>
+
+  <div *ngIf="!loading && datasets.length === 0" class="empty-state">
+    <p>No datasets in this project. Create one to get started!</p>
+  </div>
+
+  <div *ngIf="!loading && datasets.length > 0" class="datasets-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Elements</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let dataset of datasets">
+          <td>{{ dataset.name }}</td>
+          <td>{{ dataset.elements?.length || 0 }}</td>
+          <td>{{ dataset.createdAt | date:'short' }}</td>
+          <td>
+            <a [routerLink]="['/datasets', dataset.id]" class="btn btn-small btn-secondary">View</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

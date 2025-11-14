@@ -19,6 +19,9 @@ import { ValidationService } from './features/generation/services/validation.ser
 import { PatternAnalyzerService } from './features/generation/services/pattern-analyzer.service';
 import { SimpleDataGeneratorService } from './features/generation/services/simple-data-generator.service';
 import { AnnotationService } from './features/generation/services/annotation.service';
+import { SchemaGeneratorService } from './features/generation/services/schema-generator.service';
+import { SchemaParserService } from './features/generation/services/schema-parser.service';
+import { OllamaService } from './features/generation/services/ollama.service';
 import {
   ProjectEntity,
   DatasetEntity,
@@ -80,6 +83,9 @@ import {
     PatternAnalyzerService,
     SimpleDataGeneratorService,
     AnnotationService,
+    SchemaGeneratorService,
+    SchemaParserService,
+    OllamaService,
   ],
 })
 export class AppModule {}

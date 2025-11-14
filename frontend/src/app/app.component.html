@@ -1,0 +1,58 @@
+<div class="container">
+  <header class="app-header">
+    <h1>{{ title }}</h1>
+    <div class="auth-buttons">
+      <ng-container *ngIf="currentUser$ | async as user; else notLoggedIn">
+        <span class="user-name">Welcome, {{ getUserDisplayName(user) }}!</span>
+        <button (click)="logout()" class="btn-secondary">Logout</button>
+      </ng-container>
+      <ng-template #notLoggedIn>
+        <button (click)="openLogin()" class="btn-primary">Login</button>
+        <button (click)="openRegister()" class="btn-secondary">Register</button>
+      </ng-template>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>Add New Message</h2>
+    <form (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="text">Enter your message:</label>
+        <input
+          type="text"
+          id="text"
+          name="text"
+          [(ngModel)]="text"
+          placeholder="Type something..."
+          [disabled]="loading"
+          class="input-text"
+        />
+      </div>
+      <button type="submit" [disabled]="loading || !text.trim()" class="btn-primary">
+        {{ loading ? 'Saving...' : 'Submit' }}
+      </button>
+    </form>
+
+    <div *ngIf="error" class="error">{{ error }}</div>
+  </div>
+
+  <div class="card">
+    <h2>Saved Messages</h2>
+
+    <div *ngIf="loading && helloWorlds.length === 0" class="loading">Loading...</div>
+
+    <div *ngIf="!loading && helloWorlds.length === 0" class="empty">
+      No messages yet. Add one above!
+    </div>
+
+    <div class="messages-list">
+      <div *ngFor="let item of helloWorlds" class="message-item">
+        <div class="message-text">{{ item.text }}</div>
+        <div class="message-date">{{ item.createdAt | date:'short' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-login-dialog></app-login-dialog>
+<router-outlet />

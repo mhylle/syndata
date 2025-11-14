@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database with pgvector - Always needed
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: mynotes-postgres
+    restart: unless-stopped
+    ports:
+      - "11003:5432"
+    environment:
+      POSTGRES_DB: mynotes
+      POSTGRES_USER: mynotes_user
+      POSTGRES_PASSWORD: mynotes_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mynotes_user -d mynotes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend - Optional for development
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mynotes-backend
+    restart: unless-stopped
+    ports:
+      - "11002:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: mynotes
+      DATABASE_USER: mynotes_user
+      DATABASE_PASSWORD: mynotes_password
+      JWT_SECRET: dev-secret-key-change-in-production-b8f3a9c2d1e4
+      AUTH_MODE: local
+      AUTH_SERVICE_URL: https://mhylle.com/api/auth
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run start:dev
+
+  # Frontend - Optional for development
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mynotes-frontend
+    restart: unless-stopped
+    ports:
+      - "11001:4200"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npx ng serve --configuration=docker --host 0.0.0.0
+
+volumes:
+  postgres_data:

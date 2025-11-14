@@ -1,0 +1,100 @@
+<div class="dialog-overlay" *ngIf="isVisible" (mousedown)="onOverlayClick($event)">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2>{{ isLoginMode ? 'Login' : 'Register' }}</h2>
+      <button class="close-btn" (click)="close()" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="dialog-content">
+      <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            [(ngModel)]="formData.email"
+            required
+            email
+            [disabled]="loading"
+            placeholder="Enter your email"
+          />
+        </div>
+
+        <div class="form-group" *ngIf="!isLoginMode">
+          <label for="firstName">First Name (optional)</label>
+          <input
+            type="text"
+            id="firstName"
+            name="firstName"
+            [(ngModel)]="formData.firstName"
+            [disabled]="loading"
+            placeholder="Enter your first name"
+          />
+        </div>
+
+        <div class="form-group" *ngIf="!isLoginMode">
+          <label for="lastName">Last Name (optional)</label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            [(ngModel)]="formData.lastName"
+            [disabled]="loading"
+            placeholder="Enter your last name"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            [(ngModel)]="formData.password"
+            required
+            minlength="6"
+            [disabled]="loading"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <div class="form-group" *ngIf="!isLoginMode">
+          <label for="confirmPassword">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            [(ngModel)]="formData.confirmPassword"
+            required
+            minlength="6"
+            [disabled]="loading"
+            placeholder="Confirm your password"
+          />
+        </div>
+
+        <div class="error-message" *ngIf="error">
+          {{ error }}
+        </div>
+
+        <div class="dialog-actions">
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="!loginForm.valid || loading"
+          >
+            {{ loading ? 'Please wait...' : (isLoginMode ? 'Login' : 'Register') }}
+          </button>
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="toggleMode()"
+            [disabled]="loading"
+          >
+            {{ isLoginMode ? 'Need an account?' : 'Already have an account?' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

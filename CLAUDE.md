@@ -74,7 +74,7 @@ npm run format        # Prettier formatting
 **Test Database Setup:**
 ```bash
 # Create test database (requires PostgreSQL running)
-docker exec mynotes-postgres psql -U mynotes_user -d postgres -c "CREATE DATABASE mynotes_test;"
+docker exec syndata-postgres psql -U syndata_user -d postgres -c "CREATE DATABASE syndata_test;"
 ```
 
 ### Frontend (Angular)
@@ -125,19 +125,30 @@ This documentation is automatically generated from NestJS decorators and include
 - **Core modules** (`src/core/`): Essential features like auth, health checks, migrations
 - **Common utilities** (`src/common/`): Shared filters, pipes, utilities
 - **Config module** (`src/config/`): Environment and configuration management
-- **Hello-world module**: Example feature module with controller and service
+- **Feature modules** (`src/features/`):
+  - `projects/`: Project management (controllers, services)
+  - `datasets/`: Dataset CRUD operations
+  - `generation/`: AI-powered data generation (Ollama integration, schema generation, validation)
+  - `notes/`: Legacy note-taking feature (can be removed if not needed)
+- **Shared entities** (`src/shared/entities/`): TypeORM entities for database models
 
-**Module Pattern:**
+**Feature Organization Pattern:**
 ```
-feature-module/
-├── feature.module.ts          # Module definition with imports/providers
-├── feature.controller.ts       # HTTP endpoints
-├── feature.service.ts          # Business logic
-├── dto/                        # Data Transfer Objects (validation DTOs)
-├── guards/                     # NestJS guards (auth, roles)
-├── interfaces/                 # TypeScript interfaces
-└── strategies/                 # Passport strategies
+src/features/feature-name/
+├── controllers/
+│   └── feature.controller.ts   # HTTP endpoints
+├── services/
+│   ├── feature.service.ts      # Business logic
+│   └── feature.service.spec.ts # Unit tests
+├── dto/                         # Data Transfer Objects (validation DTOs)
+└── interfaces/                  # TypeScript interfaces
+
+src/shared/entities/
+├── feature.entity.ts            # TypeORM entity definition
+└── index.ts                     # Entity exports
 ```
+
+**Note**: This project uses a **simplified architecture** where all feature modules are registered directly in `app.module.ts` instead of creating separate `*.module.ts` files for each feature. Controllers and services are imported and registered in the main `AppModule`.
 
 **Key Patterns:**
 - **Dependency injection**: Use constructor injection for all services
@@ -271,6 +282,62 @@ The backend uses a **factory provider pattern** to switch between auth services:
 - Optional login for personalization
 - User data tied to authenticated sessions when logged in
 
+## AI-Powered Data Generation
+
+The backend integrates **Ollama** for AI-powered synthetic data generation:
+
+**Key Service**: `OllamaService` (`src/features/generation/services/ollama.service.ts`)
+- **Model**: Configurable via `OLLAMA_MODEL` environment variable
+- **Endpoint**: Configurable via `OLLAMA_URL` environment variable
+- **Features**: Automatic retry logic, request logging, temperature/token control
+
+**Environment Configuration** (`.env`):
+```env
+# For work (H100 GPU)
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.3
+
+# For local development
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b
+```
+
+**Available Local Models** (check with `curl http://localhost:11434/api/tags`):
+- `llama3.1:8b` - Recommended for local development (8B params, Q4_K_M)
+- `qwen3:30b` - Larger model for better quality (30.5B params, Q4_K_M)
+- `deepseek-r1:32b` - Alternative large model (32.8B params, Q4_K_M)
+- `gpt-oss:20b` - Alternative medium model (20.9B params, MXFP4)
+
+**Switching Between Environments**:
+Create a `.env` file in `backend/` directory:
+```bash
+# Copy example file
+cp backend/.env.example backend/.env
+
+# For local development (home)
+echo "OLLAMA_URL=http://localhost:11434" >> backend/.env
+echo "OLLAMA_MODEL=llama3.1:8b" >> backend/.env
+
+# For work (H100)
+echo "OLLAMA_URL=http://ollama:11434" >> backend/.env
+echo "OLLAMA_MODEL=llama3.3" >> backend/.env
+```
+
+**Related Services**:
+- **SchemaGeneratorService**: Generates synthetic data schemas using AI
+- **SchemaParserService**: Parses and validates AI-generated schemas
+- **PatternAnalyzerService**: Analyzes data patterns for intelligent generation
+- **SimpleDataGeneratorService**: Basic data generation with @faker-js/faker
+- **AnnotationService**: Handles data annotations and metadata
+
+**Architecture Pattern**:
+The generation system uses a **pipeline architecture**:
+1. Schema definition or AI generation (`SchemaGeneratorService`)
+2. Schema parsing and validation (`SchemaParserService`)
+3. Pattern analysis (`PatternAnalyzerService`)
+4. Data generation (`SimpleDataGeneratorService` or AI-based)
+5. Annotation and validation (`AnnotationService`, `ValidationService`)
+
 ## Testing Strategy
 
 - **Backend**: Jest for unit tests, separate config for E2E tests (`test/jest-e2e.json`)
@@ -279,9 +346,10 @@ The backend uses a **factory provider pattern** to switch between auth services:
 
 ## Key Dependencies
 
-- **Backend**: NestJS 11, TypeScript 5.7, RxJS 7.8
+- **Backend**: NestJS 11, TypeScript 5.7, RxJS 7.8, Ollama SDK 0.6
 - **Frontend**: Angular 19, TypeScript 5.7, RxJS 7.8
 - **Database**: PostgreSQL 17 with pgvector extension
+- **AI/ML**: Ollama (llama3.3 model), @faker-js/faker for synthetic data
 - **Build tools**: SWC (backend), esbuild via Angular CLI (frontend)
 
 ## Docker Setup
@@ -368,19 +436,19 @@ cd frontend && npm start
 
 **PostgreSQL with pgvector**:
 - Image: `pgvector/pgvector:pg17`
-- Database: `mynotes`
-- User: `mynotes_user`
-- Password: `mynotes_password`
+- Database: `syndata`
+- User: `syndata_user`
+- Password: `syndata_password`
 - Port: 11003
 - Extension: pgvector (auto-enabled via `docker/init-db.sql`)
 
 **Connecting to the database**:
 ```bash
 # From host machine
-psql -h localhost -p 11003 -U mynotes_user -d mynotes
+psql -h localhost -p 11003 -U syndata_user -d syndata
 
 # From within Docker network
-psql -h postgres -p 5432 -U mynotes_user -d mynotes
+psql -h postgres -p 5432 -U syndata_user -d syndata
 ```
 
 ### Environment Variables
@@ -390,9 +458,14 @@ psql -h postgres -p 5432 -U mynotes_user -d mynotes
 - `PORT`: 3000
 - `DATABASE_HOST`: localhost (or postgres in Docker)
 - `DATABASE_PORT`: 11003 (or 5432 in Docker)
-- `DATABASE_NAME`: mynotes
-- `DATABASE_USER`: mynotes_user
-- `DATABASE_PASSWORD`: mynotes_password
+- `DATABASE_NAME`: syndata
+- `DATABASE_USER`: syndata_user
+- `DATABASE_PASSWORD`: syndata_password
+- `AUTH_MODE`: local (or production)
+- `AUTH_SERVICE_URL`: External auth service URL (if using local mode)
+- `JWT_SECRET`: Secret key for JWT tokens
+- `OLLAMA_URL`: http://localhost:11434 (local) or http://ollama:11434 (Docker)
+- `OLLAMA_MODEL`: llama3.1:8b (local) or llama3.3 (work H100)
 
 ### CORS Configuration
 
@@ -411,15 +484,14 @@ Backend is configured to accept requests from:
 
 ### Adding a New Feature (Backend)
 
-1. **Create a new module** in `src/core/` or as a feature module
-2. **Define DTOs** in `feature/dto/` for request/response validation
-3. **Create entity** in database folder for TypeORM
-4. **Implement service** with business logic
-5. **Create controller** with HTTP endpoints
-6. **Register module** in `src/app.module.ts`
-7. **Add tests** (`.spec.ts` and `.e2e-spec.ts` files)
-8. **Run tests**: `npm run test` and `npm run test:e2e`
-9. **Check coverage**: `npm run test:cov`
+1. **Create feature directory** in `src/features/feature-name/`
+2. **Define entity** in `src/shared/entities/feature-name.entity.ts` and export from `index.ts`
+3. **Create DTOs** in `feature-name/dto/` for request/response validation
+4. **Implement service** in `feature-name/services/` with business logic
+5. **Create controller** in `feature-name/controllers/` with HTTP endpoints
+6. **Register in AppModule**: Add entity to `TypeOrmModule.forFeature()`, add controller to `controllers`, add service to `providers`
+7. **Add tests** (`.spec.ts` files alongside services/controllers)
+8. **Run tests**: `npm run test` and check coverage with `npm run test:cov`
 
 ### Adding a New Component (Frontend)
 
@@ -490,13 +562,16 @@ npm run start:debug
 **Check database state:**
 ```bash
 # Connect to development database
-docker exec mynotes-postgres psql -U mynotes_user -d mynotes
+docker exec syndata-postgres psql -U syndata_user -d syndata
 
 # View tables
 \dt
 
-# Query users (example)
-SELECT * FROM "user";
+# Query projects (example)
+SELECT * FROM project;
+
+# Query generation jobs
+SELECT * FROM generation_job;
 
 # Exit
 \q

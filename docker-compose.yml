@@ -7,11 +7,12 @@ services:
     container_name: syndata-postgres
     restart: unless-stopped
     ports:
-      - "11003:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: syndata
       POSTGRES_USER: syndata_user
       POSTGRES_PASSWORD: syndata_password
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -41,6 +42,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       AUTH_MODE: ${AUTH_MODE:-local}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-https://auth.example.com/api/auth}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.3}
     volumes:
       - ./backend:/app
       - /app/node_modules

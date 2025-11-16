@@ -14,12 +14,14 @@ interface OllamaCallLog {
 export class OllamaService {
   private readonly logger = new Logger(OllamaService.name);
   private readonly OLLAMA_URL = process.env.OLLAMA_URL || 'http://ollama:11434';
+  private readonly OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.3';
   private readonly MAX_RETRIES = 1;
   private lastCallLog: OllamaCallLog;
   private ollama: Ollama;
 
   constructor() {
     this.ollama = new Ollama({ host: this.OLLAMA_URL });
+    this.logger.log(`Initialized Ollama service with URL: ${this.OLLAMA_URL}, Model: ${this.OLLAMA_MODEL}`);
   }
 
   async callModel(
@@ -38,7 +40,7 @@ export class OllamaService {
         this.logger.log(`[${requestId}] Calling Ollama (attempt ${attempt + 1})`);
 
         const response = await this.ollama.chat({
-          model: 'llama3.3',
+          model: this.OLLAMA_MODEL,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt },
@@ -62,7 +64,7 @@ export class OllamaService {
           startTime,
           endTime,
           duration,
-          model: 'llama3.3',
+          model: this.OLLAMA_MODEL,
           status: 'success',
         };
 
@@ -90,7 +92,7 @@ export class OllamaService {
           startTime,
           endTime: Date.now(),
           duration,
-          model: 'llama3.3',
+          model: this.OLLAMA_MODEL,
           status: 'error',
         };
 

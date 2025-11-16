@@ -56,18 +56,30 @@ export class AISchemaGeneratorComponent {
       domainExpertise: this.domainExpertise || undefined
     }).subscribe({
       next: (response) => {
+        console.log('AI Schema Response:', response);
+
+        if (!response) {
+          this.error = 'Received empty response from server';
+          this.loading = false;
+          return;
+        }
+
         this.conversationId = response.conversationId;
-        this.clarifyingQuestions = response.questions;
+        this.clarifyingQuestions = response.clarifyingQuestions || [];
+
+        console.log('Clarifying questions:', this.clarifyingQuestions);
 
         // Initialize answers map
         this.answers.clear();
-        this.clarifyingQuestions.forEach(q => {
-          if (q.questionType === 'boolean') {
-            this.answers.set(q.id, false);
-          } else {
-            this.answers.set(q.id, '');
-          }
-        });
+        if (Array.isArray(this.clarifyingQuestions)) {
+          this.clarifyingQuestions.forEach(q => {
+            if (q.questionType === 'numeric') {
+              this.answers.set(q.questionId, 0);
+            } else {
+              this.answers.set(q.questionId, '');
+            }
+          });
+        }
 
         this.currentStep = 'questions';
         this.loading = false;

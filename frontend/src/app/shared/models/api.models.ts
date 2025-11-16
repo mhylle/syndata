@@ -67,16 +67,17 @@ export interface GenerateSchemaDto {
 }
 
 export interface ClarifyingQuestion {
-  id: string;
+  questionId: string;
   question: string;
-  questionType: 'text' | 'number' | 'boolean' | 'choice';
+  questionType: 'categorical' | 'numeric' | 'open_text';
   choices?: string[];
-  reasoning: string;
+  reasoning?: string;
 }
 
 export interface GenerateSchemaResponse {
   conversationId: string;
-  questions: ClarifyingQuestion[];
+  clarifyingQuestions: ClarifyingQuestion[];
+  requestId: string;
 }
 
 export interface RefineSchemaDto {

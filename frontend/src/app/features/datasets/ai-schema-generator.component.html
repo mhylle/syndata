@@ -79,43 +79,32 @@
           <div *ngFor="let question of clarifyingQuestions" class="question-card">
             <div class="question-header">
               <label>{{ question.question }}</label>
-              <span class="question-reasoning">{{ question.reasoning }}</span>
+              <span *ngIf="question.reasoning" class="question-reasoning">{{ question.reasoning }}</span>
             </div>
 
-            <!-- Text input -->
-            <input
-              *ngIf="question.questionType === 'text'"
-              type="text"
-              [value]="getAnswerValue(question.id)"
-              (input)="setAnswerValue(question.id, $any($event.target).value)"
+            <!-- Open text input -->
+            <textarea
+              *ngIf="question.questionType === 'open_text'"
+              [value]="getAnswerValue(question.questionId)"
+              (input)="setAnswerValue(question.questionId, $any($event.target).value)"
               placeholder="Enter your answer"
-            />
+              rows="3"
+            ></textarea>
 
-            <!-- Number input -->
+            <!-- Numeric input -->
             <input
-              *ngIf="question.questionType === 'number'"
+              *ngIf="question.questionType === 'numeric'"
               type="number"
-              [value]="getAnswerValue(question.id)"
-              (input)="setAnswerValue(question.id, +$any($event.target).value)"
+              [value]="getAnswerValue(question.questionId)"
+              (input)="setAnswerValue(question.questionId, +$any($event.target).value)"
               placeholder="Enter a number"
             />
 
-            <!-- Boolean input -->
-            <div *ngIf="question.questionType === 'boolean'" class="checkbox-group">
-              <input
-                type="checkbox"
-                [id]="'check-' + question.id"
-                [checked]="getAnswerValue(question.id)"
-                (change)="setAnswerValue(question.id, $any($event.target).checked)"
-              />
-              <label [for]="'check-' + question.id">Yes</label>
-            </div>
-
-            <!-- Choice input -->
+            <!-- Categorical (dropdown) input -->
             <select
-              *ngIf="question.questionType === 'choice'"
-              [value]="getAnswerValue(question.id)"
-              (change)="setAnswerValue(question.id, $any($event.target).value)"
+              *ngIf="question.questionType === 'categorical'"
+              [value]="getAnswerValue(question.questionId)"
+              (change)="setAnswerValue(question.questionId, $any($event.target).value)"
             >
               <option value="">-- Select an option --</option>
               <option *ngFor="let choice of question.choices" [value]="choice">

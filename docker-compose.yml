@@ -60,7 +60,7 @@ services:
     container_name: syndata-frontend
     restart: unless-stopped
     ports:
-      - "11001:4200"
+      - "11001:4205"
     environment:
       NODE_ENV: development
     volumes:

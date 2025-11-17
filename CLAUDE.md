@@ -36,7 +36,7 @@ cd backend && npm run start:dev
 # Terminal 3: Start frontend
 cd frontend && npm start
 
-# Access the app at http://localhost:4200
+# Access the app at http://localhost:4205
 # API docs at http://localhost:3000/api/docs
 ```
 
@@ -88,7 +88,7 @@ cd frontend
 npm install
 
 # Development
-npm start             # Start dev server (default: http://localhost:4200)
+npm start             # Start dev server (default: http://localhost:4205)
 
 # Build
 npm run build         # Production build to dist/frontend
@@ -417,7 +417,7 @@ docker compose up -d postgres
 
 # In separate terminals:
 cd backend && npm run start:dev      # Backend on port 3000
-cd frontend && npm start              # Frontend on port 4200
+cd frontend && npm start              # Frontend on port 4205
 ```
 
 For local development, backend connects to database at `localhost:11003`.
@@ -471,7 +471,7 @@ psql -h postgres -p 5432 -U syndata_user -d syndata
 
 Backend is configured to accept requests from:
 - http://localhost:11001 (Docker frontend)
-- http://localhost:4200 (Local frontend)
+- http://localhost:4205 (Local frontend)
 
 ### Notes
 
@@ -553,7 +553,7 @@ npm run start:debug
 ```
 
 **Frontend:**
-- Use Chrome DevTools (F12 in browser at http://localhost:4200)
+- Use Chrome DevTools (F12 in browser at http://localhost:4205)
 - Source maps are available in development mode
 - Use Angular DevTools extension for component inspection
 

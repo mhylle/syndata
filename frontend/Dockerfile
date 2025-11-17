@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 
 # Expose port
-EXPOSE 4200
+EXPOSE 4205
 
 # Default command (can be overridden in docker-compose)
 CMD ["npm", "start", "--", "--host", "0.0.0.0"]

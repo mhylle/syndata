@@ -27,7 +27,7 @@ export default () => ({
   cors: {
     allowedOrigins: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
-      : ['http://localhost:4200', 'http://localhost:11001'],
+      : ['http://localhost:4205', 'http://localhost:11001'],
   },
   rateLimit: {
     ttl: parseInt(process.env.RATE_LIMIT_TTL || '60', 10),

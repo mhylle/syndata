@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../shared/services/api.service';
 import { Dataset, Element } from '../../shared/models/api.models';
+import { DataGenerationConfigComponent } from './data-generation-config.component';
 
 @Component({
   selector: 'app-dataset-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, DataGenerationConfigComponent],
   templateUrl: './dataset-detail.component.html',
   styleUrls: ['./dataset-detail.component.scss']
 })
@@ -18,6 +19,7 @@ export class DatasetDetailComponent implements OnInit {
   error: string | null = null;
   projectId = '';
   datasetId = '';
+  showGenerateModal = false;
 
   constructor(
     private apiService: ApiService,
@@ -68,5 +70,26 @@ export class DatasetDetailComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  hasAISchema(): boolean {
+    if (!this.dataset?.schemaDefinition) return false;
+    const schema = this.dataset.schemaDefinition;
+    // Check if it's a SyntheticSchemaDto (has schemaMetadata and rootStructure)
+    return !!(schema.schemaMetadata && schema.rootStructure);
+  }
+
+  openGenerateModal(): void {
+    this.showGenerateModal = true;
+  }
+
+  closeGenerateModal(): void {
+    this.showGenerateModal = false;
+  }
+
+  onGenerationComplete(): void {
+    this.showGenerateModal = false;
+    // Optionally reload the dataset or navigate to records view
+    this.loadDataset();
   }
 }

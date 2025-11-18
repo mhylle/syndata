@@ -120,6 +120,22 @@ export class ApiService {
     );
   }
 
+  generateFromSchema(
+    projectId: string,
+    datasetId: string,
+    config: {
+      count: number;
+      minComponentConfidence?: number;
+      minRuleConfidence?: number;
+      minFieldConfidence?: number;
+    }
+  ): Observable<{ jobId: string; message: string; count: number }> {
+    return this.http.post<{ jobId: string; message: string; count: number }>(
+      `${this.baseUrl}/projects/${projectId}/datasets/${datasetId}/generate-from-schema`,
+      config
+    );
+  }
+
   // ===== SCHEMA GENERATION =====
 
   generateSchema(projectId: string, dto: GenerateSchemaDto): Observable<GenerateSchemaResponse> {

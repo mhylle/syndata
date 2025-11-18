@@ -70,6 +70,61 @@ export class GenerationService {
     return job;
   }
 
+  async generateFromAISchema(
+    projectId: string,
+    datasetId: string,
+    count: number,
+    generationFilters?: {
+      minComponentConfidence?: number;
+      minRuleConfidence?: number;
+      minFieldConfidence?: number;
+    },
+  ): Promise<{ jobId: string; message: string; count: number }> {
+    this.logger.log(`[${projectId}] Generating ${count} records from AI schema for dataset ${datasetId}`);
+
+    // 1. Retrieve dataset with AI-generated schema
+    const dataset = await this.datasetService.findOne(datasetId);
+
+    if (!dataset.schemaDefinition) {
+      throw new BadRequestException('Dataset does not have a schema definition');
+    }
+
+    // 2. Validate it's a SyntheticSchemaDto (has required structure)
+    const schema = dataset.schemaDefinition;
+    if (!schema.schemaMetadata || !schema.rootStructure) {
+      throw new BadRequestException('Invalid schema structure - missing schemaMetadata or rootStructure');
+    }
+
+    this.logger.log(`[${projectId}] Using AI schema: ${schema.schemaMetadata.name}`);
+
+    // 3. Create generation job
+    const job = this.jobRepository.create({
+      projectId,
+      datasetId,
+      status: 'running',
+      count,
+      config: {
+        generationFilters,
+        schemaType: 'ai_generated',
+        schemaName: schema.schemaMetadata.name,
+      },
+    });
+    await this.jobRepository.save(job);
+
+    // 4. Run generation asynchronously
+    this.runAISchemaGeneration(job, schema, generationFilters).catch((error) => {
+      this.logger.error(`[${projectId}] Generation failed: ${error.message}`);
+      job.status = 'failed';
+      this.jobRepository.save(job);
+    });
+
+    return {
+      jobId: job.id,
+      message: `Generation job created for ${count} records`,
+      count,
+    };
+  }
+
   private async runGeneration(
     job: GenerationJobEntity,
     schema: any,
@@ -117,6 +172,48 @@ export class GenerationService {
       job.completedAt = new Date();
       await this.jobRepository.save(job);
     } catch (error) {
+      job.status = 'failed';
+      job.completedAt = new Date();
+      await this.jobRepository.save(job);
+      throw error;
+    }
+  }
+
+  private async runAISchemaGeneration(
+    job: GenerationJobEntity,
+    schema: any,
+    generationFilters?: any,
+  ): Promise<void> {
+    try {
+      this.logger.log(`[${job.projectId}] Starting generation of ${job.count} records from AI schema`);
+
+      for (let i = 0; i < job.count; i++) {
+        // Generate a single record using the dynamic schema
+        const recordEntity = await this.generateRecordFromDynamicSchema(
+          schema.rootStructure,
+          [], // Generation rules are embedded in component metadata
+          generationFilters,
+        );
+
+        // Set job and project IDs
+        recordEntity.projectId = job.projectId;
+        recordEntity.generationJobId = job.id;
+
+        // Save the record
+        await this.recordRepository.save(recordEntity);
+
+        if ((i + 1) % 10 === 0) {
+          this.logger.log(`[${job.projectId}] Generated ${i + 1}/${job.count} records`);
+        }
+      }
+
+      job.status = 'completed';
+      job.completedAt = new Date();
+      await this.jobRepository.save(job);
+
+      this.logger.log(`[${job.projectId}] Generation completed: ${job.count} records`);
+    } catch (error) {
+      this.logger.error(`[${job.projectId}] Generation failed: ${error.message}`);
       job.status = 'failed';
       job.completedAt = new Date();
       await this.jobRepository.save(job);

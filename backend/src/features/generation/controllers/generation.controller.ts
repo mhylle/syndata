@@ -14,6 +14,7 @@ import {
   GenerateSchemaResponseDto,
   RefineSchemaResponseDto
 } from '../dto/schema-response.dto';
+import { GenerateFromSchemaDto } from '../dto/generate-from-schema.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('Generation')
@@ -29,6 +30,49 @@ export class GenerationController {
   @ApiOperation({ summary: 'Trigger synthetic data generation' })
   generate(@Param('projectId') projectId: string, @Body() generateDto: GenerateDto) {
     return this.generationService.generate(projectId, generateDto);
+  }
+
+  @Post('datasets/:datasetId/generate-from-schema')
+  @ApiOperation({
+    summary: 'Generate synthetic data from AI-generated schema',
+    description: 'Triggers data generation job using schema created by AI Schema Generator'
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Generation job created successfully',
+    schema: {
+      properties: {
+        jobId: { type: 'string' },
+        message: { type: 'string' },
+        count: { type: 'number' }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid dataset or schema definition'
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Dataset not found'
+  })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  @ApiParam({ name: 'datasetId', description: 'Dataset ID with AI-generated schema' })
+  async generateFromSchema(
+    @Param('projectId') projectId: string,
+    @Param('datasetId') datasetId: string,
+    @Body() dto: GenerateFromSchemaDto,
+  ): Promise<{ jobId: string; message: string; count: number }> {
+    return this.generationService.generateFromAISchema(
+      projectId,
+      datasetId,
+      dto.count,
+      {
+        minComponentConfidence: dto.minComponentConfidence,
+        minRuleConfidence: dto.minRuleConfidence,
+        minFieldConfidence: dto.minFieldConfidence,
+      },
+    );
   }
 
   @Get('jobs/:jobId')

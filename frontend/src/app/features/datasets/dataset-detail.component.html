@@ -10,7 +10,15 @@
     <p class="meta">Created: {{ dataset.createdAt | date:'full' }}</p>
 
     <div class="section">
-      <h2>Schema Definition</h2>
+      <div class="section-header">
+        <h2>Schema Definition</h2>
+        <button *ngIf="hasAISchema()"
+                class="btn-primary"
+                (click)="openGenerateModal()"
+                title="Generate synthetic data from AI schema">
+          🚀 Generate Data
+        </button>
+      </div>
       <pre class="schema-display">{{ dataset.schemaDefinition | json }}</pre>
     </div>
 
@@ -27,4 +35,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Data Generation Modal -->
+  <app-data-generation-config
+    *ngIf="showGenerateModal && dataset"
+    [projectId]="projectId"
+    [datasetId]="datasetId"
+    [datasetName]="dataset.name"
+    (close)="closeGenerateModal()"
+    (generationComplete)="onGenerationComplete()">
+  </app-data-generation-config>
 </div>

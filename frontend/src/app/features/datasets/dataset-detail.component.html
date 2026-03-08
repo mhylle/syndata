@@ -178,9 +178,16 @@
                       <input type="number" [(ngModel)]="ensureLlmOptions(editField).maxLength" placeholder="300" min="10" max="2000">
                     </div>
                     <div class="form-group">
-                      <label>Constraints</label>
+                      <label>Constraints (include)</label>
                       <input type="text" [(ngModel)]="ensureLlmOptions(editField).constraints"
-                        placeholder="e.g. No markdown, use medical terminology">
+                        placeholder="e.g. Use medical terminology, include vital signs">
+                    </div>
+                  </div>
+                  <div class="edit-form-row">
+                    <div class="form-group full-width">
+                      <label>Negative Prompt (exclude)</label>
+                      <input type="text" [(ngModel)]="ensureLlmOptions(editField).negativePrompt"
+                        placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
                     </div>
                   </div>
                   <div class="examples-section">
@@ -301,9 +308,16 @@
                   <input type="number" [(ngModel)]="ensureLlmOptions(newField).maxLength" placeholder="300" min="10" max="2000">
                 </div>
                 <div class="form-group">
-                  <label>Constraints</label>
+                  <label>Constraints (include)</label>
                   <input type="text" [(ngModel)]="ensureLlmOptions(newField).constraints"
-                    placeholder="e.g. No markdown, use medical terminology">
+                    placeholder="e.g. Use medical terminology, include vital signs">
+                </div>
+              </div>
+              <div class="edit-form-row">
+                <div class="form-group full-width">
+                  <label>Negative Prompt (exclude)</label>
+                  <input type="text" [(ngModel)]="ensureLlmOptions(newField).negativePrompt"
+                    placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
                 </div>
               </div>
               <div class="examples-section">

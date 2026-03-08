@@ -12,6 +12,7 @@ export interface LlmOptions {
   temperature?: number;      // 0.1 - 1.0
   examples?: string[];       // few-shot examples
   constraints?: string;      // things to include/avoid
+  negativePrompt?: string;   // things to explicitly exclude from output
   customFormat?: string;     // free-text format instruction (used when outputFormat === 'custom')
   structuredKeys?: string;   // comma-separated keys for structured output (e.g. "systolic,diastolic,pulse")
 }
@@ -172,6 +173,7 @@ export class DatasetDetailComponent implements OnInit {
           if (f.llmOptions.temperature !== undefined && f.llmOptions.temperature !== null) opts.temperature = f.llmOptions.temperature;
           if (f.llmOptions.examples?.length) opts.examples = f.llmOptions.examples;
           if (f.llmOptions.constraints) opts.constraints = f.llmOptions.constraints;
+          if (f.llmOptions.negativePrompt) opts.negativePrompt = f.llmOptions.negativePrompt;
           if (f.llmOptions.customFormat) opts.customFormat = f.llmOptions.customFormat;
           if (f.llmOptions.structuredKeys) opts.structuredKeys = f.llmOptions.structuredKeys;
           if (Object.keys(opts).length > 0) field.llmOptions = opts;
@@ -216,6 +218,12 @@ export class DatasetDetailComponent implements OnInit {
 
   saveSchema(): void {
     if (this.savingSchema) return;
+
+    // Auto-apply any pending inline edit before saving
+    if (this.editingFieldIndex !== null && this.editField.name?.trim()) {
+      this.confirmEditField();
+    }
+
     this.savingSchema = true;
 
     let schema: any;

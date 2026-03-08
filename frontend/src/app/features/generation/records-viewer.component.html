@@ -55,7 +55,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let record of records; let i = index" class="record-row">
+        <tr *ngFor="let record of records; let i = index"
+            class="record-row"
+            [class.selected]="selectedRecord?.id === record.id"
+            (click)="selectRecord(record)">
           <td class="row-number">{{ (currentPage - 1) * pageSize + i + 1 }}</td>
           <td *ngFor="let column of displayColumns" class="record-cell">
             <span class="cell-value">{{ getValue(record, column) }}</span>
@@ -64,6 +67,23 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Record Detail Panel -->
+  <div *ngIf="selectedRecord" class="record-detail">
+    <div class="detail-header">
+      <h3>Record Detail</h3>
+      <button class="btn-close" (click)="closeDetail()">&times;</button>
+    </div>
+    <div class="detail-meta">
+      Record ID: {{ selectedRecord.id }} | Created: {{ selectedRecord.createdAt | date:'medium' }}
+    </div>
+    <div class="detail-fields">
+      <div *ngFor="let field of getDetailFields()" class="detail-field" [class.long-text]="isLongText(field.value)">
+        <div class="field-label">{{ field.key }}</div>
+        <div class="field-value" [class.pre-wrap]="isLongText(field.value)">{{ formatValue(field.value) }}</div>
+      </div>
+    </div>
   </div>
 
   <!-- No Records State -->

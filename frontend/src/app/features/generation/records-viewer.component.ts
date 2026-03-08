@@ -29,6 +29,9 @@ export class RecordsViewerComponent implements OnInit {
   columns: string[] = [];
   displayColumns: string[] = [];
 
+  // Record detail
+  selectedRecord: any = null;
+
   constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
@@ -126,6 +129,31 @@ export class RecordsViewerComponent implements OnInit {
       return value;
     }
     return '-';
+  }
+
+  selectRecord(record: any): void {
+    this.selectedRecord = this.selectedRecord?.id === record.id ? null : record;
+  }
+
+  closeDetail(): void {
+    this.selectedRecord = null;
+  }
+
+  getDetailFields(): { key: string; value: any }[] {
+    if (!this.selectedRecord?.data) return [];
+    return Object.entries(this.selectedRecord.data)
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  }
+
+  isLongText(value: any): boolean {
+    return typeof value === 'string' && value.length > 80;
+  }
+
+  formatValue(value: any): string {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'object') return JSON.stringify(value, null, 2);
+    return String(value);
   }
 
   exportToCSV(): void {

@@ -215,6 +215,102 @@
   }
 }
 
+// Record row clickable
+.record-row {
+  cursor: pointer;
+
+  &.selected {
+    background-color: #eef2ff !important;
+    border-left: 3px solid #667eea;
+  }
+}
+
+// Record detail panel
+.record-detail {
+  margin-top: 1.5rem;
+  border: 1px solid #d0d8f0;
+  border-radius: 8px;
+  background: #fafbff;
+  overflow: hidden;
+
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #667eea;
+    color: white;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.8;
+
+      &:hover { opacity: 1; }
+    }
+  }
+
+  .detail-meta {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: #888;
+    border-bottom: 1px solid #e8ecf4;
+  }
+
+  .detail-fields {
+    padding: 0.75rem 1rem;
+  }
+
+  .detail-field {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eef0f5;
+    align-items: flex-start;
+
+    &:last-child { border-bottom: none; }
+
+    &.long-text {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .field-label {
+      min-width: 160px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #4a5568;
+      flex-shrink: 0;
+    }
+
+    .field-value {
+      font-size: 0.9rem;
+      color: #1a202c;
+      word-break: break-word;
+
+      &.pre-wrap {
+        white-space: pre-wrap;
+        line-height: 1.5;
+        padding: 0.5rem 0.75rem;
+        background: white;
+        border: 1px solid #e8ecf4;
+        border-radius: 4px;
+        width: 100%;
+      }
+    }
+  }
+}
+
 .no-records {
   text-align: center;
   padding: 2rem;

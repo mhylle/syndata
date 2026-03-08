@@ -297,8 +297,16 @@ export class SimpleDataGeneratorService {
     }
     systemPrompt += ' No quotes, no explanation, no labels, no markdown formatting. Just the raw value.';
 
+    // Add negative prompt to system prompt for stronger enforcement
+    if (opts.negativePrompt) {
+      systemPrompt += ` STRICT RULE: ${opts.negativePrompt}. This is a hard constraint — violating it makes the output invalid.`;
+      this.logger.log(`[LLM] Field "${field.name}" negative prompt: ${opts.negativePrompt}`);
+    }
+
     const temperature = opts.temperature ?? 0.8;
     const maxTokens = opts.maxLength ?? 300;
+
+    this.logger.debug(`[LLM] Field "${field.name}" full prompt:\n--- USER ---\n${userPrompt}\n--- SYSTEM ---\n${systemPrompt}`);
 
     const response = await this.ollamaService.callModel(
       userPrompt,

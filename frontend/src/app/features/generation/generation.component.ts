@@ -141,6 +141,20 @@ export class GenerationComponent implements OnInit {
     });
   }
 
+  cancelJob(job: GenerationJob): void {
+    this.error = null;
+    this.message = null;
+    this.apiService.cancelJob(this.selectedProjectId, job.id).subscribe({
+      next: () => {
+        this.message = `Cancellation requested for job`;
+        setTimeout(() => this.loadGenerationJobs(), 2000);
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Failed to cancel job';
+      }
+    });
+  }
+
   deleteJob(job: GenerationJob): void {
     if (!confirm(`Delete this job and all its records? This cannot be undone.`)) {
       return;

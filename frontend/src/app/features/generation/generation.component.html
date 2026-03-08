@@ -75,9 +75,12 @@
             class="btn btn-delete">
             Delete
           </button>
-          <span *ngIf="job.status === 'running'" class="btn-disabled">
-            Running... {{ job.progress || 0 }}%
-          </span>
+          <button
+            *ngIf="job.status === 'running'"
+            (click)="cancelJob(job)"
+            class="btn btn-cancel-job">
+            Cancel ({{ job.progress || 0 }}%)
+          </button>
         </div>
       </div>
     </div>

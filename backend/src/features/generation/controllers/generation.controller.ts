@@ -107,7 +107,8 @@ export class GenerationController {
       projectId,
       targetDatasetId,
       dto.sourceDatasetId,
-      dto.transformationPrompt,
+      dto.fieldMappings,
+      dto.globalPrompt,
       dto.sourceJobId,
       dto.count,
     );

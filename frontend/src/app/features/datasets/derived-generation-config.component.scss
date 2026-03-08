@@ -15,7 +15,7 @@
   background: white;
   border-radius: 12px;
   width: 90%;
-  max-width: 700px;
+  max-width: 800px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -71,6 +71,11 @@
 
     strong {
       color: #374151;
+    }
+
+    .field-count {
+      color: #6b7280;
+      margin-left: 0.5rem;
     }
   }
 
@@ -134,9 +139,268 @@
   &.textarea {
     resize: vertical;
     font-family: inherit;
-    min-height: 120px;
+    min-height: 60px;
   }
 }
+
+// ===== Mappings Section =====
+
+.mappings-section {
+  .mappings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: #1f2937;
+    }
+  }
+}
+
+.btn-auto-map {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.mapping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mapping-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: #d1d5db;
+  }
+}
+
+.mapping-target {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+
+  .target-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.95rem;
+  }
+
+  .target-type {
+    font-size: 0.8rem;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+}
+
+.mapping-config {
+  .mode-selector {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0.75rem;
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #6b7280;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:first-child {
+        border-radius: 6px 0 0 6px;
+      }
+
+      &:last-child {
+        border-radius: 0 6px 6px 0;
+        border-left: none;
+      }
+
+      &.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        font-weight: 500;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.mapping-detail {
+  .form-control {
+    font-size: 0.9rem;
+    padding: 0.6rem;
+  }
+
+  .help-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+
+    &.warning {
+      color: #f59e0b;
+    }
+  }
+}
+
+// ===== Context Fields =====
+
+.context-fields {
+  margin-bottom: 0.75rem;
+
+  .context-fields-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #374151;
+      margin: 0;
+    }
+  }
+
+  .context-fields-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .context-field-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+
+    input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    &:hover {
+      border-color: #667eea;
+    }
+
+    &.checked {
+      background: #eef2ff;
+      border-color: #667eea;
+      color: #4338ca;
+    }
+  }
+}
+
+.btn-select-all {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ===== AI Improve Button =====
+
+.input-with-ai {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+
+  .form-control {
+    flex: 1;
+  }
+
+  .btn-ai {
+    flex-shrink: 0;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #c4b5fd;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #6d28d9;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    margin-top: 2px;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
+      border-color: #8b5cf6;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.mapping-summary {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: right;
+}
+
+// ===== Progress =====
 
 .progress-section {
   margin-bottom: 1rem;
@@ -171,6 +435,8 @@
   margin-top: 0.35rem;
 }
 
+// ===== Messages =====
+
 .error-message {
   background: #fef2f2;
   border: 1px solid #fecaca;
@@ -190,6 +456,8 @@
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
+
+// ===== Buttons =====
 
 .btn-primary, .btn-secondary {
   padding: 0.75rem 1.5rem;

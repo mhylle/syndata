@@ -1,5 +1,38 @@
-import { IsUUID, IsString, IsNumber, IsOptional, Min, Max, MinLength } from 'class-validator';
+import { IsUUID, IsString, IsNumber, IsOptional, IsArray, Min, Max, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+export class FieldMappingDto {
+  @ApiProperty({ description: 'Target field name in the destination dataset' })
+  @IsString()
+  targetField: string;
+
+  @ApiProperty({
+    description: 'Mapping mode: "map" copies from source field, "llm" generates via LLM',
+    enum: ['map', 'llm'],
+  })
+  @IsString()
+  mode: 'map' | 'llm';
+
+  @ApiPropertyOptional({ description: 'Source field name (required when mode is "map")' })
+  @IsOptional()
+  @IsString()
+  sourceField?: string;
+
+  @ApiPropertyOptional({ description: 'LLM prompt for this field (required when mode is "llm")' })
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Source fields to include as context for LLM generation. If omitted, entire source record is sent.',
+    example: ['patient_name', 'age', 'diagnosis'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  sourceContextFields?: string[];
+}
 
 export class GenerateFromDatasetDto {
   @ApiProperty({
@@ -17,12 +50,21 @@ export class GenerateFromDatasetDto {
   sourceJobId?: string;
 
   @ApiProperty({
-    description: 'Prompt template that instructs the LLM how to transform each source record into a target record. Use {{record}} to reference the full source record JSON.',
-    example: 'Given this patient record, write a clinical summary that a clinician would see at the start of a consultation. Focus on key findings, current medications, and risk factors.',
+    description: 'Field-level mappings: map source fields or generate via LLM per target field',
+    type: [FieldMappingDto],
   })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FieldMappingDto)
+  fieldMappings: FieldMappingDto[];
+
+  @ApiPropertyOptional({
+    description: 'Global context prompt prepended to all LLM field prompts',
+    example: 'You are generating clinical summaries for hospital patients.',
+  })
+  @IsOptional()
   @IsString()
-  @MinLength(10)
-  transformationPrompt: string;
+  globalPrompt?: string;
 
   @ApiPropertyOptional({
     description: 'Max number of source records to process. If omitted, processes all source records.',

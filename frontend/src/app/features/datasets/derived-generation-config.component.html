@@ -8,6 +8,9 @@
     <div class="modal-body">
       <div class="dataset-info">
         <strong>Target Dataset:</strong> {{ datasetName }}
+        <span class="field-count" *ngIf="targetFields.length > 0">
+          ({{ targetFields.length }} fields)
+        </span>
       </div>
 
       <div *ngIf="error" class="error-message">{{ error }}</div>
@@ -35,7 +38,7 @@
           <option value="">-- Select source dataset --</option>
           <option *ngFor="let d of datasets" [value]="d.id">{{ d.name }}</option>
         </select>
-        <span class="help-text">Select the dataset whose records will be transformed</span>
+        <span class="help-text">Select the dataset whose records will be used as input</span>
       </div>
 
       <!-- Source Job -->
@@ -80,21 +83,148 @@
 
       <div class="divider"></div>
 
-      <!-- Transformation Prompt -->
-      <div class="form-group">
-        <label for="prompt">Transformation Prompt</label>
-        <textarea
-          id="prompt"
-          [(ngModel)]="transformationPrompt"
-          [disabled]="loading"
-          class="form-control textarea"
-          rows="6"
-          placeholder="Describe how to transform each source record into a target record.
+      <!-- Field Mappings -->
+      <div class="mappings-section" *ngIf="targetFields.length > 0">
+        <div class="mappings-header">
+          <h3>Field Mappings</h3>
+          <button
+            *ngIf="sourceFields.length > 0"
+            class="btn-auto-map"
+            (click)="autoMap()"
+            [disabled]="loading">
+            Auto-map matching fields
+          </button>
+        </div>
+        <span class="help-text" style="margin-bottom: 1rem; display: block;">
+          For each target field, choose to copy from a source field or generate with LLM.
+        </span>
 
-Example: Given this patient record, write a clinical summary that a clinician would see at the start of a consultation. Include key findings, current medications, risk factors, and recommended follow-up actions."
-        ></textarea>
+        <div class="mapping-list">
+          <div *ngFor="let mapping of fieldMappings; let i = index" class="mapping-card">
+            <div class="mapping-target">
+              <span class="target-name">{{ mapping.targetField }}</span>
+              <span class="target-type">{{ mapping.targetType }}</span>
+            </div>
+
+            <div class="mapping-config">
+              <div class="mode-selector">
+                <button
+                  class="mode-btn"
+                  [class.active]="mapping.mode === 'map'"
+                  (click)="mapping.mode = 'map'"
+                  [disabled]="loading || sourceFields.length === 0">
+                  Map from source
+                </button>
+                <button
+                  class="mode-btn"
+                  [class.active]="mapping.mode === 'llm'"
+                  (click)="mapping.mode = 'llm'"
+                  [disabled]="loading">
+                  Generate with LLM
+                </button>
+              </div>
+
+              <!-- Map mode: source field dropdown -->
+              <div *ngIf="mapping.mode === 'map'" class="mapping-detail">
+                <select
+                  [(ngModel)]="mapping.sourceField"
+                  [disabled]="loading"
+                  class="form-control">
+                  <option value="">-- Select source field --</option>
+                  <option *ngFor="let sf of sourceFields" [value]="sf">{{ sf }}</option>
+                </select>
+                <span *ngIf="!mapping.sourceField" class="help-text warning">
+                  Required: select which source field to copy
+                </span>
+              </div>
+
+              <!-- LLM mode: source context fields + prompt -->
+              <div *ngIf="mapping.mode === 'llm'" class="mapping-detail">
+                <!-- Source context field selection -->
+                <div class="context-fields" *ngIf="sourceFields.length > 0">
+                  <div class="context-fields-header">
+                    <label>Source fields to include as context:</label>
+                    <button
+                      class="btn-select-all"
+                      (click)="selectAllContextFields(mapping)"
+                      [disabled]="loading">
+                      {{ mapping.sourceContextFields.length === sourceFields.length ? 'Deselect all' : 'Select all' }}
+                    </button>
+                  </div>
+                  <div class="context-fields-list">
+                    <label
+                      *ngFor="let sf of sourceFields"
+                      class="context-field-checkbox"
+                      [class.checked]="mapping.sourceContextFields.includes(sf)">
+                      <input
+                        type="checkbox"
+                        [checked]="mapping.sourceContextFields.includes(sf)"
+                        (change)="toggleContextField(mapping, sf)"
+                        [disabled]="loading"
+                      />
+                      {{ sf }}
+                    </label>
+                  </div>
+                  <span *ngIf="mapping.sourceContextFields.length === 0" class="help-text warning">
+                    No fields selected — entire source record will be sent to LLM
+                  </span>
+                </div>
+
+                <div class="input-with-ai">
+                  <textarea
+                    [(ngModel)]="mapping.prompt"
+                    [disabled]="loading"
+                    class="form-control textarea"
+                    rows="2"
+                    [placeholder]="'Prompt for generating ' + mapping.targetField + ' (optional — uses global prompt if empty)'"
+                  ></textarea>
+                  <button class="btn-ai"
+                    [disabled]="improvingField === 'field-' + i || !mapping.prompt?.trim() || loading"
+                    (click)="improveFieldPrompt(mapping, i)"
+                    title="Improve prompt with AI">
+                    {{ improvingField === 'field-' + i ? '...' : 'AI' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mapping-summary">
+          <span *ngIf="mappedFieldCount > 0">{{ mappedFieldCount }} mapped</span>
+          <span *ngIf="mappedFieldCount > 0 && llmFieldCount > 0"> · </span>
+          <span *ngIf="llmFieldCount > 0">{{ llmFieldCount }} LLM-generated</span>
+        </div>
+      </div>
+
+      <div *ngIf="loadingTarget" class="help-text">Loading target schema fields...</div>
+      <div *ngIf="!loadingTarget && targetFields.length === 0" class="help-text warning">
+        Target dataset has no schema fields defined. Add fields to the dataset schema first.
+      </div>
+
+      <div class="divider" *ngIf="llmFieldCount > 0"></div>
+
+      <!-- Global Context Prompt -->
+      <div class="form-group" *ngIf="llmFieldCount > 0">
+        <label for="globalPrompt">Global Context Prompt (optional)</label>
+        <div class="input-with-ai">
+          <textarea
+            id="globalPrompt"
+            [(ngModel)]="globalPrompt"
+            [disabled]="loading"
+            class="form-control textarea"
+            rows="3"
+            placeholder="Provide context for all LLM-generated fields. Example: You are generating clinical data for hospital patients. Use realistic medical terminology and maintain consistency across fields."
+          ></textarea>
+          <button class="btn-ai"
+            [disabled]="improvingField === 'global' || !globalPrompt?.trim() || loading"
+            (click)="improveGlobalPrompt()"
+            title="Improve prompt with AI">
+            {{ improvingField === 'global' ? '...' : 'AI' }}
+          </button>
+        </div>
         <span class="help-text">
-          The LLM will receive each source record along with this prompt, and generate a target record matching your schema.
+          This context is prepended to all LLM field prompts. Individual field prompts take precedence for specific instructions.
         </span>
       </div>
     </div>
@@ -109,7 +239,7 @@ Example: Given this patient record, write a clinical summary that a clinician wo
       <button
         class="btn-primary"
         (click)="generate()"
-        [disabled]="loading || !sourceDatasetId || !transformationPrompt.trim()">
+        [disabled]="loading || !sourceDatasetId || !hasValidMappings">
         <span *ngIf="!loading">Generate</span>
         <span *ngIf="loading">Transforming...</span>
       </button>

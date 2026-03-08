@@ -147,7 +147,8 @@ export class GenerationService {
     projectId: string,
     targetDatasetId: string,
     sourceDatasetId: string,
-    transformationPrompt: string,
+    fieldMappings: Array<{ targetField: string; mode: 'map' | 'llm'; sourceField?: string; prompt?: string; sourceContextFields?: string[] }>,
+    globalPrompt?: string,
     sourceJobId?: string,
     maxCount?: number,
   ): Promise<{ jobId: string; message: string; count: number }> {
@@ -160,7 +161,17 @@ export class GenerationService {
     // 2. Validate source dataset exists
     await this.datasetService.findOne(sourceDatasetId);
 
-    // 3. Resolve source job IDs and count records
+    // 3. Validate field mappings
+    if (!fieldMappings || fieldMappings.length === 0) {
+      throw new BadRequestException('At least one field mapping is required');
+    }
+    for (const m of fieldMappings) {
+      if (m.mode === 'map' && !m.sourceField) {
+        throw new BadRequestException(`Field "${m.targetField}" is set to map but has no sourceField`);
+      }
+    }
+
+    // 4. Resolve source job IDs and count records
     let sourceJobIds: string[];
     if (sourceJobId) {
       sourceJobIds = [sourceJobId];
@@ -175,7 +186,6 @@ export class GenerationService {
       sourceJobIds = sourceJobs.map(j => j.id);
     }
 
-    // Count total available source records
     let totalSource = 0;
     for (const jid of sourceJobIds) {
       totalSource += await this.recordRepository.count({ where: { generationJobId: jid } });
@@ -188,7 +198,7 @@ export class GenerationService {
 
     this.logger.log(`[${projectId}] Generating ${count} derived records from dataset ${sourceDatasetId} → ${targetDatasetId}`);
 
-    // 4. Create generation job
+    // 5. Create generation job
     const job = this.jobRepository.create({
       projectId,
       datasetId: targetDatasetId,
@@ -198,13 +208,14 @@ export class GenerationService {
         schemaType: 'derived',
         sourceDatasetId,
         sourceJobId,
-        transformationPrompt,
+        fieldMappings,
+        globalPrompt,
       },
     });
     await this.jobRepository.save(job);
 
-    // 5. Run async
-    const runner = this.runDerivedGeneration(job, targetDataset, sourceDatasetId, sourceJobId, transformationPrompt, count);
+    // 6. Run async
+    const runner = this.runDerivedGeneration(job, sourceDatasetId, sourceJobId, fieldMappings, globalPrompt, count);
     runner.catch((error) => {
       this.logger.error(`[${projectId}] Derived generation failed: ${error.message}`);
       job.status = 'failed';
@@ -220,27 +231,40 @@ export class GenerationService {
 
   private async runDerivedGeneration(
     job: GenerationJobEntity,
-    targetDataset: any,
     sourceDatasetId: string,
     sourceJobId: string | undefined,
-    transformationPrompt: string,
+    fieldMappings: Array<{ targetField: string; mode: 'map' | 'llm'; sourceField?: string; prompt?: string; sourceContextFields?: string[] }>,
+    globalPrompt: string | undefined,
     count: number,
   ): Promise<void> {
-    const BATCH_SIZE = 10; // Smaller batches since LLM calls are slow
+    const BATCH_SIZE = 10;
 
     try {
-      const targetFields = targetDataset.schemaDefinition.fields;
-      const fieldNames = targetFields.map((f: any) => f.name);
+      // Separate mapped vs LLM fields
+      const mappedFields = fieldMappings.filter(m => m.mode === 'map');
+      const llmFields = fieldMappings.filter(m => m.mode === 'llm');
+      const llmFieldNames = llmFields.map(f => f.targetField);
 
-      // Build system prompt
-      const systemPrompt = [
-        'You are a data transformation assistant. Your job is to transform a source record into a target record with a specific schema.',
-        `Target schema fields: ${targetFields.map((f: any) => `${f.name} (${f.type}${f.description ? ': ' + f.description : ''})`).join(', ')}`,
-        `You MUST respond with valid JSON containing exactly these fields: ${JSON.stringify(fieldNames)}`,
-        'Return ONLY the JSON object, no explanation, no markdown code fences.',
-      ].join('\n');
+      // Collect all source context fields needed across LLM fields
+      // If any LLM field has no sourceContextFields, we send the whole record
+      const hasFieldLevelContext = llmFields.some(f => f.sourceContextFields?.length);
 
-      // Fetch source records — resolve job IDs first, then simple find
+      // Build system prompt for LLM fields (if any)
+      let systemPrompt = '';
+      if (llmFields.length > 0) {
+        const fieldDescriptions = llmFields.map(f => `"${f.targetField}": ${f.prompt || 'Generate an appropriate value'}`).join('\n');
+        systemPrompt = [
+          globalPrompt || 'You are a data transformation assistant.',
+          '',
+          `Generate values for these fields based on the source record:`,
+          fieldDescriptions,
+          '',
+          `You MUST respond with valid JSON containing exactly these keys: ${JSON.stringify(llmFieldNames)}`,
+          'Return ONLY the JSON object, no explanation, no markdown code fences.',
+        ].join('\n');
+      }
+
+      // Fetch source records
       let sourceJobIds: string[];
       if (sourceJobId) {
         sourceJobIds = [sourceJobId];
@@ -255,18 +279,17 @@ export class GenerationService {
       let sourceRecords: RecordEntity[] = [];
       for (const jid of sourceJobIds) {
         if (sourceRecords.length >= count) break;
-        const batch = await this.recordRepository.find({
+        const records = await this.recordRepository.find({
           where: { generationJobId: jid },
           order: { createdAt: 'ASC' },
           take: count - sourceRecords.length,
         });
-        sourceRecords.push(...batch);
+        sourceRecords.push(...records);
       }
 
       const batch: RecordEntity[] = [];
 
       for (let i = 0; i < sourceRecords.length; i++) {
-        // Check cancellation
         if (this.isJobCancelled(job.id)) {
           this.logger.log(`[${job.projectId}] Derived job ${job.id} cancelled at record ${i + 1}/${count}`);
           if (batch.length > 0) {
@@ -281,60 +304,78 @@ export class GenerationService {
         }
 
         const sourceRecord = sourceRecords[i];
-        const sourceData = JSON.stringify(sourceRecord.data, null, 2);
-
-        const userPrompt = [
-          transformationPrompt,
-          '',
-          'Source record:',
-          sourceData,
-        ].join('\n');
+        const sourceData = sourceRecord.data;
 
         try {
-          const llmResponse = await this.ollamaService.callModel(
-            userPrompt,
-            systemPrompt,
-            0.7,
-            2000,
-            `derived-${job.id}-${i}`,
-          );
+          // Step 1: Copy mapped fields directly
+          const targetData: Record<string, any> = {
+            _sourceRecordId: sourceRecord.id,
+          };
+          for (const m of mappedFields) {
+            targetData[m.targetField] = this.resolveSourceField(sourceData, m.sourceField!);
+          }
 
-          // Parse LLM response as JSON
-          const parsed = this.parseLLMJson(llmResponse, fieldNames);
+          // Step 2: Generate LLM fields (one call for all LLM fields)
+          if (llmFields.length > 0) {
+            // Filter source data to only include selected context fields
+            let contextData = sourceData;
+            if (hasFieldLevelContext) {
+              const allContextFields = new Set<string>();
+              for (const f of llmFields) {
+                if (f.sourceContextFields?.length) {
+                  f.sourceContextFields.forEach(cf => allContextFields.add(cf));
+                } else {
+                  // If any field has no filter, include everything
+                  Object.keys(sourceData).forEach(k => allContextFields.add(k));
+                }
+              }
+              contextData = {};
+              for (const key of allContextFields) {
+                if (key in sourceData) {
+                  contextData[key] = sourceData[key];
+                }
+              }
+            }
 
-          const record = this.recordRepository.create({
+            const userPrompt = [
+              'Source record:',
+              JSON.stringify(contextData, null, 2),
+            ].join('\n');
+
+            const llmResponse = await this.ollamaService.callModel(
+              userPrompt,
+              systemPrompt,
+              0.7,
+              2000,
+              `derived-${job.id}-${i}`,
+            );
+
+            const parsed = this.parseLLMJson(llmResponse, llmFieldNames);
+            Object.assign(targetData, parsed);
+          }
+
+          batch.push(this.recordRepository.create({
             projectId: job.projectId,
             generationJobId: job.id,
-            data: {
-              ...parsed,
-              _sourceRecordId: sourceRecord.id,
-            },
+            data: targetData,
             isComposite: false,
-          });
-          batch.push(record);
+          }));
         } catch (error) {
           this.logger.warn(`[${job.projectId}] Failed to transform record ${i + 1}: ${error.message}`);
-          // Store error record so we don't lose progress
-          const record = this.recordRepository.create({
+          batch.push(this.recordRepository.create({
             projectId: job.projectId,
             generationJobId: job.id,
-            data: {
-              _error: error.message,
-              _sourceRecordId: sourceRecord.id,
-            },
+            data: { _error: error.message, _sourceRecordId: sourceRecord.id },
             isComposite: false,
-          });
-          batch.push(record);
+          }));
         }
 
         // Flush batch
         if (batch.length >= BATCH_SIZE || i === sourceRecords.length - 1) {
           await this.recordRepository.save(batch);
           batch.length = 0;
-
           job.progress = Math.round(((i + 1) / count) * 100);
           await this.jobRepository.save(job);
-
           this.logger.log(`[${job.projectId}] Derived ${i + 1}/${count} records`);
         }
       }
@@ -343,7 +384,6 @@ export class GenerationService {
       job.progress = 100;
       job.completedAt = new Date();
       await this.jobRepository.save(job);
-
       this.logger.log(`[${job.projectId}] Derived generation completed: ${count} records`);
     } catch (error) {
       this.logger.error(`[${job.projectId}] Derived generation failed: ${error.message}`);
@@ -352,6 +392,20 @@ export class GenerationService {
       await this.jobRepository.save(job);
       throw error;
     }
+  }
+
+  /**
+   * Resolve a field value from source data, supporting nested paths (e.g. "patient.name")
+   */
+  private resolveSourceField(data: any, fieldPath: string): any {
+    // Handle flat fields and nested dot-notation paths
+    const parts = fieldPath.split('.');
+    let value = data;
+    for (const part of parts) {
+      if (value == null) return null;
+      value = value[part];
+    }
+    return value ?? null;
   }
 
   private parseLLMJson(response: string, expectedFields: string[]): Record<string, any> {

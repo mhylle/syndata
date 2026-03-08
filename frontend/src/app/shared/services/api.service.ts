@@ -190,7 +190,8 @@ export class ApiService {
     config: {
       sourceDatasetId: string;
       sourceJobId?: string;
-      transformationPrompt: string;
+      fieldMappings: Array<{ targetField: string; mode: 'map' | 'llm'; sourceField?: string; prompt?: string; sourceContextFields?: string[] }>;
+      globalPrompt?: string;
       count?: number;
     }
   ): Observable<{ jobId: string; message: string; count: number }> {

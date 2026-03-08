@@ -184,6 +184,22 @@ export class ApiService {
     );
   }
 
+  generateFromDataset(
+    projectId: string,
+    targetDatasetId: string,
+    config: {
+      sourceDatasetId: string;
+      sourceJobId?: string;
+      transformationPrompt: string;
+      count?: number;
+    }
+  ): Observable<{ jobId: string; message: string; count: number }> {
+    return this.http.post<{ jobId: string; message: string; count: number }>(
+      `${this.baseUrl}/projects/${projectId}/datasets/${targetDatasetId}/generate-from-dataset`,
+      config
+    );
+  }
+
   cancelJob(projectId: string, jobId: string): Observable<any> {
     return this.http.post<any>(
       `${this.baseUrl}/projects/${projectId}/jobs/${jobId}/cancel`,

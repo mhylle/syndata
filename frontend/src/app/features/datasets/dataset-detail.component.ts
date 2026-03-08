@@ -5,6 +5,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../shared/services/api.service';
 import { Dataset, Element } from '../../shared/models/api.models';
 import { DataGenerationConfigComponent } from './data-generation-config.component';
+import { DerivedGenerationConfigComponent } from './derived-generation-config.component';
 
 export interface LlmOptions {
   outputFormat?: 'single_value' | 'sentence' | 'paragraph' | 'list' | 'structured' | 'custom';
@@ -38,7 +39,7 @@ const FIELD_TYPES = [
 @Component({
   selector: 'app-dataset-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, DataGenerationConfigComponent],
+  imports: [CommonModule, FormsModule, RouterModule, DataGenerationConfigComponent, DerivedGenerationConfigComponent],
   templateUrl: './dataset-detail.component.html',
   styleUrls: ['./dataset-detail.component.scss']
 })
@@ -50,6 +51,7 @@ export class DatasetDetailComponent implements OnInit {
   projectId = '';
   datasetId = '';
   showGenerateModal = false;
+  showDerivedModal = false;
 
   // Schema editing
   editingSchema = false;
@@ -513,6 +515,19 @@ export class DatasetDetailComponent implements OnInit {
 
   onGenerationComplete(): void {
     this.showGenerateModal = false;
+    this.loadDataset();
+  }
+
+  openDerivedModal(): void {
+    this.showDerivedModal = true;
+  }
+
+  closeDerivedModal(): void {
+    this.showDerivedModal = false;
+  }
+
+  onDerivedComplete(): void {
+    this.showDerivedModal = false;
     this.loadDataset();
   }
 

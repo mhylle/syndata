@@ -21,6 +21,11 @@
                   (click)="openGenerateModal()">
             Generate Data
           </button>
+          <button *ngIf="hasGeneratableSchema()"
+                  class="btn-secondary"
+                  (click)="openDerivedModal()">
+            Generate from Dataset
+          </button>
           <button *ngIf="!editingSchema" class="btn-secondary" (click)="startEditSchema()">
             Edit Schema
           </button>
@@ -466,4 +471,14 @@
     (close)="closeGenerateModal()"
     (generationComplete)="onGenerationComplete()">
   </app-data-generation-config>
+
+  <!-- Derived Generation Modal -->
+  <app-derived-generation-config
+    *ngIf="showDerivedModal && dataset"
+    [projectId]="projectId"
+    [datasetId]="datasetId"
+    [datasetName]="dataset.name"
+    (close)="closeDerivedModal()"
+    (generationComplete)="onDerivedComplete()">
+  </app-derived-generation-config>
 </div>

@@ -20,6 +20,7 @@ import {
   RefineSchemaResponseDto
 } from '../dto/schema-response.dto';
 import { GenerateFromSchemaDto } from '../dto/generate-from-schema.dto';
+import { GenerateFromDatasetDto } from '../dto/generate-from-dataset.dto';
 import { DatasetService } from '../../datasets/services/dataset.service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -85,6 +86,30 @@ export class GenerationController {
         minRuleConfidence: dto.minRuleConfidence,
         minFieldConfidence: dto.minFieldConfidence,
       },
+    );
+  }
+
+  @Post('datasets/:datasetId/generate-from-dataset')
+  @ApiOperation({
+    summary: 'Generate records by transforming records from another dataset',
+    description: 'Uses LLM to transform each source record into a target record matching the target dataset schema',
+  })
+  @ApiResponse({ status: 201, description: 'Derived generation job created' })
+  @ApiResponse({ status: 400, description: 'Invalid configuration or no source records' })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  @ApiParam({ name: 'datasetId', description: 'Target dataset ID (where new records will be created)' })
+  async generateFromDataset(
+    @Param('projectId') projectId: string,
+    @Param('datasetId') targetDatasetId: string,
+    @Body() dto: GenerateFromDatasetDto,
+  ): Promise<{ jobId: string; message: string; count: number }> {
+    return this.generationService.generateFromDataset(
+      projectId,
+      targetDatasetId,
+      dto.sourceDatasetId,
+      dto.transformationPrompt,
+      dto.sourceJobId,
+      dto.count,
     );
   }
 

@@ -1,0 +1,118 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Generate from Dataset</h2>
+      <button class="close-btn" (click)="onClose()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="dataset-info">
+        <strong>Target Dataset:</strong> {{ datasetName }}
+      </div>
+
+      <div *ngIf="error" class="error-message">{{ error }}</div>
+      <div *ngIf="success" class="success-message">{{ success }}</div>
+
+      <!-- Job progress -->
+      <div *ngIf="jobStatus === 'running'" class="progress-section">
+        <div class="progress-bar-container">
+          <div class="progress-bar" [style.width.%]="jobProgress"></div>
+        </div>
+        <div class="progress-info">
+          <span class="progress-text">{{ jobProgress }}% — {{ Math.round(effectiveCount * jobProgress / 100) }} / {{ effectiveCount }} records</span>
+        </div>
+      </div>
+
+      <!-- Source Dataset -->
+      <div class="form-group">
+        <label for="sourceDataset">Source Dataset</label>
+        <select
+          id="sourceDataset"
+          [(ngModel)]="sourceDatasetId"
+          (ngModelChange)="onSourceDatasetChange()"
+          [disabled]="loading"
+          class="form-control">
+          <option value="">-- Select source dataset --</option>
+          <option *ngFor="let d of datasets" [value]="d.id">{{ d.name }}</option>
+        </select>
+        <span class="help-text">Select the dataset whose records will be transformed</span>
+      </div>
+
+      <!-- Source Job -->
+      <div class="form-group" *ngIf="sourceDatasetId">
+        <label for="sourceJob">Source Generation Job</label>
+        <div *ngIf="loadingJobs" class="help-text">Loading jobs...</div>
+        <select
+          *ngIf="!loadingJobs"
+          id="sourceJob"
+          [(ngModel)]="sourceJobId"
+          (ngModelChange)="onSourceJobChange()"
+          [disabled]="loading"
+          class="form-control">
+          <option value="">-- All jobs (all records) --</option>
+          <option *ngFor="let j of sourceJobs" [value]="j.id">
+            {{ j.status }} — {{ j.count }} records ({{ j.createdAt | date:'short' }})
+          </option>
+        </select>
+        <span *ngIf="sourceRecordCount > 0" class="help-text">
+          {{ sourceRecordCount }} source records available
+        </span>
+        <span *ngIf="sourceJobs.length === 0 && !loadingJobs" class="help-text warning">
+          No completed jobs found for this dataset
+        </span>
+      </div>
+
+      <!-- Max count -->
+      <div class="form-group" *ngIf="sourceRecordCount > 0">
+        <label for="maxCount">Max Records (optional)</label>
+        <input
+          type="number"
+          id="maxCount"
+          [(ngModel)]="maxCount"
+          [placeholder]="'All ' + sourceRecordCount + ' records'"
+          min="1"
+          [max]="sourceRecordCount"
+          [disabled]="loading"
+          class="form-control"
+        />
+        <span class="help-text">Leave empty to transform all source records</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Transformation Prompt -->
+      <div class="form-group">
+        <label for="prompt">Transformation Prompt</label>
+        <textarea
+          id="prompt"
+          [(ngModel)]="transformationPrompt"
+          [disabled]="loading"
+          class="form-control textarea"
+          rows="6"
+          placeholder="Describe how to transform each source record into a target record.
+
+Example: Given this patient record, write a clinical summary that a clinician would see at the start of a consultation. Include key findings, current medications, risk factors, and recommended follow-up actions."
+        ></textarea>
+        <span class="help-text">
+          The LLM will receive each source record along with this prompt, and generate a target record matching your schema.
+        </span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button *ngIf="!loading" class="btn-secondary" (click)="onClose()">
+        Cancel
+      </button>
+      <button *ngIf="loading" class="btn-danger" (click)="cancelGeneration()">
+        Stop
+      </button>
+      <button
+        class="btn-primary"
+        (click)="generate()"
+        [disabled]="loading || !sourceDatasetId || !transformationPrompt.trim()">
+        <span *ngIf="!loading">Generate</span>
+        <span *ngIf="loading">Transforming...</span>
+      </button>
+    </div>
+  </div>
+</div>

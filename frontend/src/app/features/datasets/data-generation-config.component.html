@@ -18,7 +18,9 @@
         <div class="progress-bar-container">
           <div class="progress-bar" [style.width.%]="jobProgress"></div>
         </div>
-        <span class="progress-text">{{ jobProgress }}% complete</span>
+        <div class="progress-info">
+          <span class="progress-text">{{ jobProgress }}% — {{ Math.round(count * jobProgress / 100) }} / {{ count }} records</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -105,8 +107,11 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn-secondary" (click)="onClose()" [disabled]="loading">
+      <button *ngIf="!loading" class="btn-secondary" (click)="onClose()">
         Cancel
+      </button>
+      <button *ngIf="loading" class="btn-danger" (click)="cancelGeneration()">
+        Stop Generation
       </button>
       <button class="btn-primary" (click)="generateData()" [disabled]="loading">
         <span *ngIf="!loading">🚀 Generate</span>

@@ -100,6 +100,12 @@ export class GenerationController {
     return this.generationService.getJobs(projectId);
   }
 
+  @Post('jobs/:jobId/cancel')
+  @ApiOperation({ summary: 'Cancel a running generation job' })
+  cancelJob(@Param('jobId') jobId: string) {
+    return this.generationService.cancelJob(jobId);
+  }
+
   @Get('records')
   @ApiOperation({ summary: 'Get generated records' })
   getRecords(

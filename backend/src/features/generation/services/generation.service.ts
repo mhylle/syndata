@@ -21,6 +21,7 @@ import { faker } from '@faker-js/faker';
 @Injectable()
 export class GenerationService {
   private readonly logger = new Logger(GenerationService.name);
+  private readonly cancelledJobs = new Set<string>();
 
   constructor(
     @InjectRepository(GenerationJobEntity)
@@ -154,6 +155,21 @@ export class GenerationService {
       const fieldValueBatch: FieldValueEntity[] = [];
 
       for (let i = 0; i < job.count; i++) {
+        // Check for cancellation
+        if (this.isJobCancelled(job.id)) {
+          this.logger.log(`Job ${job.id} cancelled at record ${i + 1}/${job.count}`);
+          // Flush any pending batch before stopping
+          if (recordBatch.length > 0) {
+            await this.recordRepository.save(recordBatch);
+            recordBatch.length = 0;
+          }
+          job.status = 'cancelled';
+          job.completedAt = new Date();
+          await this.jobRepository.save(job);
+          this.cancelledJobs.delete(job.id);
+          return;
+        }
+
         const recordRules = rules ? this.applyProbabilisticRules(rules) : undefined;
         const { record, sources } = await this.generator.generateRecord(schema, recordRules);
 
@@ -205,6 +221,7 @@ export class GenerationService {
       job.status = 'failed';
       job.completedAt = new Date();
       await this.jobRepository.save(job);
+      this.cancelledJobs.delete(job.id);
       throw error;
     }
   }
@@ -257,6 +274,20 @@ export class GenerationService {
       const batch: RecordEntity[] = [];
 
       for (let i = 0; i < job.count; i++) {
+        // Check for cancellation
+        if (this.isJobCancelled(job.id)) {
+          this.logger.log(`[${job.projectId}] Job ${job.id} cancelled at record ${i + 1}/${job.count}`);
+          if (batch.length > 0) {
+            await this.recordRepository.save(batch);
+            batch.length = 0;
+          }
+          job.status = 'cancelled';
+          job.completedAt = new Date();
+          await this.jobRepository.save(job);
+          this.cancelledJobs.delete(job.id);
+          return;
+        }
+
         const recordEntity = await this.generateRecordFromDynamicSchema(
           schema.rootStructure,
           [],
@@ -300,6 +331,21 @@ export class GenerationService {
       throw new NotFoundException(`Job ${jobId} not found`);
     }
     return job;
+  }
+
+  async cancelJob(jobId: string): Promise<GenerationJobEntity> {
+    const job = await this.getJob(jobId);
+    if (job.status !== 'running') {
+      return job; // Already finished, nothing to cancel
+    }
+    this.cancelledJobs.add(jobId);
+    this.logger.log(`Cancellation requested for job ${jobId}`);
+    // The running loop will pick up the cancellation flag on its next iteration
+    return job;
+  }
+
+  private isJobCancelled(jobId: string): boolean {
+    return this.cancelledJobs.has(jobId);
   }
 
   async getJobs(projectId: string): Promise<GenerationJobEntity[]> {

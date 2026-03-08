@@ -18,6 +18,7 @@ export class DataGenerationConfigComponent implements OnDestroy {
   @Output() close = new EventEmitter<void>();
   @Output() generationComplete = new EventEmitter<void>();
 
+  Math = Math;
   loading = false;
   error: string | null = null;
   success: string | null = null;
@@ -102,6 +103,10 @@ export class DataGenerationConfigComponent implements OnDestroy {
           this.loading = false;
           this.success = `Done! Generated ${job.count} records.`;
           setTimeout(() => this.generationComplete.emit(), 1500);
+        } else if (job.status === 'cancelled') {
+          this.stopPolling();
+          this.loading = false;
+          this.success = `Generation cancelled at ${this.jobProgress}%.`;
         } else if (job.status === 'failed') {
           this.stopPolling();
           this.loading = false;
@@ -111,6 +116,18 @@ export class DataGenerationConfigComponent implements OnDestroy {
       },
       error: () => {
         // Silently continue polling on transient errors
+      }
+    });
+  }
+
+  cancelGeneration(): void {
+    if (!this.jobId) return;
+    this.apiService.cancelJob(this.projectId, this.jobId).subscribe({
+      next: () => {
+        // Polling will pick up the 'cancelled' status
+      },
+      error: () => {
+        this.error = 'Failed to cancel job.';
       }
     });
   }

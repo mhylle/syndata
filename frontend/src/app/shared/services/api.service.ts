@@ -184,6 +184,13 @@ export class ApiService {
     );
   }
 
+  cancelJob(projectId: string, jobId: string): Observable<any> {
+    return this.http.post<any>(
+      `${this.baseUrl}/projects/${projectId}/jobs/${jobId}/cancel`,
+      {}
+    );
+  }
+
   // ===== AI PROMPT IMPROVEMENT =====
 
   improvePrompt(

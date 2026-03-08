@@ -80,6 +80,9 @@ export class DatasetDetailComponent implements OnInit {
     { value: 'custom', label: 'Custom format' },
   ];
 
+  // AI prompt improvement
+  improvingField: string | null = null; // tracks which field is being improved e.g. 'edit-prompt', 'new-negativePrompt'
+
   // Element adding
   showAddElement = false;
   newElement = { name: '', type: 'string', faker: '', description: '' };
@@ -393,6 +396,36 @@ export class DatasetDetailComponent implements OnInit {
 
   trackByIndex(index: number): number {
     return index;
+  }
+
+  improveWithAI(field: SchemaField, fieldType: 'prompt' | 'description' | 'negativePrompt', prefix: string): void {
+    const text = fieldType === 'prompt' ? field.prompt
+      : fieldType === 'description' ? field.description
+      : field.llmOptions?.negativePrompt;
+
+    if (!text?.trim()) return;
+
+    const key = `${prefix}-${fieldType}`;
+    this.improvingField = key;
+
+    const schemaFields = this.schemaFields.map(f => f.name);
+
+    this.apiService.improvePrompt(this.projectId, {
+      text,
+      fieldType,
+      fieldName: field.name,
+      schemaFields,
+    }).subscribe({
+      next: (res) => {
+        if (fieldType === 'prompt') field.prompt = res.improved;
+        else if (fieldType === 'description') field.description = res.improved;
+        else if (fieldType === 'negativePrompt') this.ensureLlmOptions(field).negativePrompt = res.improved;
+        this.improvingField = null;
+      },
+      error: () => {
+        this.improvingField = null;
+      },
+    });
   }
 
   isNumericType(type: string): boolean {

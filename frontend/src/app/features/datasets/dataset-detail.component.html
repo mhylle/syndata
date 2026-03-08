@@ -127,7 +127,15 @@
               <div class="edit-form-row">
                 <div class="form-group" [class.full-width]="editField.generator === 'llm'">
                   <label>Description{{ editField.generator === 'llm' ? ' (used as LLM context)' : '' }}</label>
-                  <input type="text" [(ngModel)]="editField.description" placeholder="What this field represents">
+                  <div class="input-with-ai">
+                    <input type="text" [(ngModel)]="editField.description" placeholder="What this field represents">
+                    <button *ngIf="editField.generator === 'llm'" class="btn-ai"
+                      [disabled]="improvingField === 'edit-description' || !editField.description?.trim()"
+                      (click)="improveWithAI(editField, 'description', 'edit')"
+                      title="Improve with AI">
+                      {{ improvingField === 'edit-description' ? '...' : '✨' }}
+                    </button>
+                  </div>
                 </div>
               </div>
               <!-- LLM Options -->
@@ -135,8 +143,16 @@
                 <div class="edit-form-row">
                   <div class="form-group full-width">
                     <label>Prompt (optional - use {{'{{fieldName}}'}} for context)</label>
-                    <textarea [(ngModel)]="editField.prompt" rows="3"
-                      [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+                    <div class="input-with-ai">
+                      <textarea [(ngModel)]="editField.prompt" rows="3"
+                        [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+                      <button class="btn-ai"
+                        [disabled]="improvingField === 'edit-prompt' || !editField.prompt?.trim()"
+                        (click)="improveWithAI(editField, 'prompt', 'edit')"
+                        title="Improve with AI">
+                        {{ improvingField === 'edit-prompt' ? '...' : '✨' }}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div class="llm-options-section">
@@ -186,8 +202,16 @@
                   <div class="edit-form-row">
                     <div class="form-group full-width">
                       <label>Negative Prompt (exclude)</label>
-                      <input type="text" [(ngModel)]="ensureLlmOptions(editField).negativePrompt"
-                        placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
+                      <div class="input-with-ai">
+                        <input type="text" [(ngModel)]="ensureLlmOptions(editField).negativePrompt"
+                          placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
+                        <button class="btn-ai"
+                          [disabled]="improvingField === 'edit-negativePrompt' || !ensureLlmOptions(editField).negativePrompt?.trim()"
+                          (click)="improveWithAI(editField, 'negativePrompt', 'edit')"
+                          title="Improve with AI">
+                          {{ improvingField === 'edit-negativePrompt' ? '...' : '✨' }}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="examples-section">
@@ -257,7 +281,15 @@
           <div class="edit-form-row">
             <div class="form-group" [class.full-width]="newField.generator === 'llm'">
               <label>Description{{ newField.generator === 'llm' ? ' (used as LLM context)' : '' }}</label>
-              <input type="text" [(ngModel)]="newField.description" placeholder="What this field represents">
+              <div class="input-with-ai">
+                <input type="text" [(ngModel)]="newField.description" placeholder="What this field represents">
+                <button *ngIf="newField.generator === 'llm'" class="btn-ai"
+                  [disabled]="improvingField === 'new-description' || !newField.description?.trim()"
+                  (click)="improveWithAI(newField, 'description', 'new')"
+                  title="Improve with AI">
+                  {{ improvingField === 'new-description' ? '...' : '✨' }}
+                </button>
+              </div>
             </div>
           </div>
           <!-- LLM Options -->
@@ -265,8 +297,16 @@
             <div class="edit-form-row">
               <div class="form-group full-width">
                 <label>Prompt (optional - use {{'{{fieldName}}'}} for context)</label>
-                <textarea [(ngModel)]="newField.prompt" rows="3"
-                  [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+                <div class="input-with-ai">
+                  <textarea [(ngModel)]="newField.prompt" rows="3"
+                    [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+                  <button class="btn-ai"
+                    [disabled]="improvingField === 'new-prompt' || !newField.prompt?.trim()"
+                    (click)="improveWithAI(newField, 'prompt', 'new')"
+                    title="Improve with AI">
+                    {{ improvingField === 'new-prompt' ? '...' : '✨' }}
+                  </button>
+                </div>
               </div>
             </div>
             <div class="llm-options-section">
@@ -316,8 +356,16 @@
               <div class="edit-form-row">
                 <div class="form-group full-width">
                   <label>Negative Prompt (exclude)</label>
-                  <input type="text" [(ngModel)]="ensureLlmOptions(newField).negativePrompt"
-                    placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
+                  <div class="input-with-ai">
+                    <input type="text" [(ngModel)]="ensureLlmOptions(newField).negativePrompt"
+                      placeholder="e.g. No markdown, no patient names, no speculative diagnoses">
+                    <button class="btn-ai"
+                      [disabled]="improvingField === 'new-negativePrompt' || !ensureLlmOptions(newField).negativePrompt?.trim()"
+                      (click)="improveWithAI(newField, 'negativePrompt', 'new')"
+                      title="Improve with AI">
+                      {{ improvingField === 'new-negativePrompt' ? '...' : '✨' }}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="examples-section">

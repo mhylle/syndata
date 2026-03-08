@@ -183,4 +183,21 @@ export class ApiService {
       data
     );
   }
+
+  // ===== AI PROMPT IMPROVEMENT =====
+
+  improvePrompt(
+    projectId: string,
+    body: {
+      text: string;
+      fieldType: 'prompt' | 'description' | 'negativePrompt';
+      fieldName: string;
+      schemaFields?: string[];
+    }
+  ): Observable<{ improved: string }> {
+    return this.http.post<{ improved: string }>(
+      `${this.baseUrl}/projects/${projectId}/ai/improve-prompt`,
+      body
+    );
+  }
 }

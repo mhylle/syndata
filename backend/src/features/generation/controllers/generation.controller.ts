@@ -7,6 +7,7 @@ import { ExportService } from '../services/export.service';
 import { TemplateService } from '../services/template.service';
 import { SchemaGeneratorService } from '../services/schema-generator.service';
 import { SchemaParserService } from '../services/schema-parser.service';
+import { OllamaService } from '../services/ollama.service';
 import { GenerateDto } from '../dto/generate.dto';
 import { ExportDto } from '../dto/export.dto';
 import {
@@ -34,6 +35,7 @@ export class GenerationController {
     private readonly templateService: TemplateService,
     private readonly schemaGeneratorService: SchemaGeneratorService,
     private readonly schemaParserService: SchemaParserService,
+    private readonly ollamaService: OllamaService,
     private readonly datasetService: DatasetService,
   ) {}
 
@@ -282,5 +284,59 @@ export class GenerationController {
       status: 'cancelled',
       message: `Schema generation request ${requestId} cancellation - to be implemented`,
     };
+  }
+
+  // ===== AI PROMPT IMPROVEMENT =====
+
+  @Post('ai/improve-prompt')
+  @ApiOperation({
+    summary: 'Improve a prompt or text field using AI',
+    description: 'Sends the current text to LLM for improvement based on field type and context',
+  })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  async improvePrompt(
+    @Param('projectId') _projectId: string,
+    @Body() body: {
+      text: string;
+      fieldType: 'prompt' | 'description' | 'negativePrompt';
+      fieldName: string;
+      schemaFields?: string[];
+    },
+  ): Promise<{ improved: string }> {
+    const { text, fieldType, fieldName, schemaFields } = body;
+
+    const contextInfo = schemaFields?.length
+      ? `\nAvailable fields in the schema: ${schemaFields.join(', ')}. Use {{fieldName}} syntax to reference other fields.`
+      : '';
+
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    switch (fieldType) {
+      case 'prompt':
+        systemPrompt = 'You are an expert at writing prompts for synthetic data generation. Your task is to improve a prompt that will be used to instruct an LLM to generate realistic field values. Return ONLY the improved prompt text, nothing else.';
+        userPrompt = `Improve this data generation prompt for a field called "${fieldName}". Make it more specific, clear, and likely to produce realistic output. Keep {{fieldName}} template variables if present.${contextInfo}\n\nCurrent prompt:\n${text}`;
+        break;
+      case 'description':
+        systemPrompt = 'You are an expert at writing field descriptions for synthetic data schemas. Your task is to improve a field description that provides context to an LLM during data generation. Return ONLY the improved description text, nothing else.';
+        userPrompt = `Improve this description for a schema field called "${fieldName}". Make it precise and informative so an LLM understands exactly what kind of data to generate.${contextInfo}\n\nCurrent description:\n${text}`;
+        break;
+      case 'negativePrompt':
+        systemPrompt = 'You are an expert at writing negative prompts (exclusion rules) for synthetic data generation. Your task is to improve a negative prompt that tells an LLM what to avoid in its output. Return ONLY the improved negative prompt text, nothing else.';
+        userPrompt = `Improve this negative prompt for a field called "${fieldName}". Make the exclusions clear, specific, and enforceable. Use imperative language (e.g. "Do not mention...", "Never include...", "Avoid...").${contextInfo}\n\nCurrent negative prompt:\n${text}`;
+        break;
+      default:
+        throw new Error(`Unknown field type: ${fieldType}`);
+    }
+
+    const improved = await this.ollamaService.callModel(
+      userPrompt,
+      systemPrompt,
+      0.7,
+      500,
+      `improve-${fieldType}-${fieldName}`,
+    );
+
+    return { improved: improved.trim() };
   }
 }

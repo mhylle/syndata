@@ -220,6 +220,41 @@ $danger: #e53e3e;
   }
 }
 
+// === Input with AI button ===
+
+.input-with-ai {
+  display: flex;
+  gap: 0.35rem;
+  align-items: flex-start;
+
+  input, textarea { flex: 1; min-width: 0; }
+}
+
+.btn-ai {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #d0d5f0;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f0f0ff, #e8ecff);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #e0e4ff, #d0d8ff);
+    border-color: $primary;
+    box-shadow: 0 1px 4px rgba($primary, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
 // === Add field button ===
 
 .btn-add-field {

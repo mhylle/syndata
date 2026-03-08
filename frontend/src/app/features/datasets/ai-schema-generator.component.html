@@ -63,7 +63,7 @@
             (click)="startConversation()"
             [disabled]="loading || !description.trim()"
           >
-            {{ loading ? 'Processing...' : 'Start Conversation' }}
+            {{ loading ? 'Connecting to AI...' : 'Start Conversation' }}
           </button>
         </div>
       </div>
@@ -121,7 +121,7 @@
             (click)="refineSchema()"
             [disabled]="loading"
           >
-            {{ loading ? 'Generating...' : 'Continue' }}
+            {{ loading ? 'Generating Schema...' : 'Generate Schema' }}
           </button>
         </div>
       </div>
@@ -130,25 +130,41 @@
       <div *ngIf="currentStep === 'review'" class="step-content">
         <div class="step-header">
           <h3>Step 3: Review Generated Schema</h3>
-          <p>Review and adjust the confidence threshold for components</p>
+          <p>Review and adjust the generated schema before creating the dataset</p>
         </div>
 
         <div *ngIf="schema" class="schema-review">
           <div class="schema-info">
             <div class="info-item">
-              <strong>Name:</strong> {{ schema.name }}
+              <strong>Name:</strong> {{ schema.schemaMetadata.name }}
             </div>
             <div class="info-item">
-              <strong>Description:</strong> {{ schema.description }}
+              <strong>Description:</strong> {{ schema.schemaMetadata.description }}
             </div>
             <div class="info-item">
-              <strong>Target Records:</strong> {{ schema.targetRecordCount }}
+              <strong>Type:</strong> {{ schema.schemaMetadata.datasetType }}
             </div>
+            <div class="info-item">
+              <strong>Overall Confidence:</strong>
+              <span class="confidence-badge" [class.high-confidence]="schema.schemaMetadata.overallConfidence >= 0.7">
+                {{ (schema.schemaMetadata.overallConfidence * 100).toFixed(0) }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group dataset-name-group">
+            <label for="datasetName">Dataset Name</label>
+            <input
+              id="datasetName"
+              type="text"
+              [(ngModel)]="datasetName"
+              placeholder="Name for the new dataset"
+            />
           </div>
 
           <div class="confidence-filter">
             <label for="minConfidence">
-              Minimum Confidence: {{ minConfidence }}%
+              Minimum Component Confidence: {{ minConfidence }}%
             </label>
             <input
               id="minConfidence"
@@ -159,7 +175,7 @@
               (input)="onConfidenceChange()"
             />
             <span class="filter-info">
-              Showing {{ filteredComponents.length }} of {{ schema.components.length }} components
+              Showing {{ filteredComponents.length }} of {{ schema.rootStructure.components.length }} components
             </span>
           </div>
 
@@ -167,28 +183,46 @@
             <h4>Schema Components</h4>
             <div *ngFor="let component of filteredComponents" class="component-card">
               <div class="component-header">
-                <strong>{{ component.name }}</strong>
-                <span class="component-type">{{ component.dataType }}</span>
-                <span class="confidence-badge" [class.high-confidence]="component.confidence >= 80">
-                  {{ component.confidence }}%
+                <strong>{{ component.componentType }}</strong>
+                <span class="component-id">{{ component.id }}</span>
+                <span class="confidence-badge" [class.high-confidence]="component.confidence >= 0.7">
+                  {{ (component.confidence * 100).toFixed(0) }}%
                 </span>
               </div>
               <p class="component-description">{{ component.description }}</p>
-              <p class="component-reasoning">
-                <em>Reasoning: {{ component.reasoning }}</em>
-              </p>
-              <div *ngIf="component.constraints" class="component-constraints">
-                <strong>Constraints:</strong>
-                <pre>{{ component.constraints | json }}</pre>
+
+              <!-- Fields -->
+              <div *ngIf="getFieldNames(component).length > 0" class="component-fields">
+                <strong>Fields:</strong>
+                <div class="fields-grid">
+                  <div *ngFor="let fieldName of getFieldNames(component)" class="field-item">
+                    <span class="field-name">{{ fieldName }}</span>
+                    <span class="field-type">{{ component.fields[fieldName].type }}</span>
+                    <span class="field-confidence">{{ (component.fields[fieldName].confidence * 100).toFixed(0) }}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Generation Rules Summary -->
+              <div class="component-rules">
+                <strong>Rules:</strong> {{ getRuleTypeSummary(component) }}
+                <span *ngIf="component.metadata?.generationRules?.length">
+                  ({{ component.metadata.generationRules.length }} rules)
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="button-group">
+          <button class="btn btn-secondary" (click)="goBack()">Back</button>
           <button class="btn btn-secondary" (click)="regenerate()">Regenerate</button>
-          <button class="btn btn-primary" (click)="createDataset()">
-            Create Dataset
+          <button
+            class="btn btn-primary"
+            (click)="createDataset()"
+            [disabled]="loading || !datasetName.trim()"
+          >
+            {{ loading ? 'Creating...' : 'Create Dataset' }}
           </button>
         </div>
       </div>

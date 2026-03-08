@@ -1,0 +1,31 @@
+{
+  "id": "iot-sensor-data",
+  "name": "IoT Sensor Data",
+  "description": "Time-series sensor readings for IoT analytics, anomaly detection, and predictive maintenance",
+  "category": "iot",
+  "schema": {
+    "fields": [
+      { "name": "device_id", "type": "string", "constraints": { "pattern": "DEV-[A-Z]{2}-[0-9]{4}" } },
+      { "name": "sensor_type", "type": "string", "constraints": { "enum": ["temperature", "humidity", "pressure", "vibration", "power_consumption", "light"] } },
+      { "name": "timestamp", "type": "date", "constraints": {} },
+      { "name": "value", "type": "number", "constraints": { "min": -50, "max": 500 } },
+      { "name": "unit", "type": "string", "constraints": { "enum": ["celsius", "percent", "hPa", "mm/s", "kWh", "lux"] } },
+      { "name": "location", "type": "string", "constraints": {} },
+      { "name": "floor", "type": "number", "constraints": { "min": -2, "max": 50 } },
+      { "name": "battery_level", "type": "number", "constraints": { "min": 0, "max": 100 } },
+      { "name": "signal_strength", "type": "number", "constraints": { "min": -100, "max": 0 } },
+      { "name": "is_anomaly", "type": "boolean", "constraints": {} },
+      { "name": "status", "type": "string", "constraints": { "enum": ["active", "maintenance", "offline", "error"] } }
+    ]
+  },
+  "defaultRules": {
+    "device_id": { "generate": "faker_uuid" },
+    "timestamp": { "generate": "faker_date" },
+    "value": { "distribution": "normal", "mean": 22, "stddev": 5 },
+    "location": { "generate": "faker_city" },
+    "floor": { "generate": "faker_number", "parameters": { "min": 1, "max": 10 } },
+    "battery_level": { "distribution": "uniform", "min": 20, "max": 100 },
+    "signal_strength": { "distribution": "normal", "mean": -60, "stddev": 15 },
+    "is_anomaly": { "generate": "faker_boolean" }
+  }
+}

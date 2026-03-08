@@ -61,6 +61,19 @@ export class ApiService {
     );
   }
 
+  updateDataset(projectId: string, datasetId: string, updates: Partial<Dataset>): Observable<Dataset> {
+    return this.http.put<Dataset>(
+      `${this.baseUrl}/projects/${projectId}/datasets/${datasetId}`,
+      updates
+    );
+  }
+
+  deleteDataset(projectId: string, datasetId: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.baseUrl}/projects/${projectId}/datasets/${datasetId}`
+    );
+  }
+
   // ===== ELEMENTS =====
 
   getElements(projectId: string, datasetId: string): Observable<Element[]> {
@@ -136,6 +149,15 @@ export class ApiService {
     );
   }
 
+  getJob(projectId: string, jobId: string): Observable<{
+    id: string; status: string; progress: number; count: number;
+    completedAt?: string; config?: any;
+  }> {
+    return this.http.get<any>(
+      `${this.baseUrl}/projects/${projectId}/jobs/${jobId}`
+    );
+  }
+
   // ===== SCHEMA GENERATION =====
 
   generateSchema(projectId: string, dto: GenerateSchemaDto): Observable<GenerateSchemaResponse> {
@@ -149,6 +171,16 @@ export class ApiService {
     return this.http.post<RefineSchemaResponse>(
       `${this.baseUrl}/projects/${projectId}/schemas/${conversationId}/refine`,
       dto
+    );
+  }
+
+  createDatasetFromSchema(
+    projectId: string,
+    data: { name: string; schema: any }
+  ): Observable<{ datasetId: string; message: string }> {
+    return this.http.post<{ datasetId: string; message: string }>(
+      `${this.baseUrl}/projects/${projectId}/datasets/from-schema`,
+      data
     );
   }
 }

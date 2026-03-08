@@ -147,4 +147,19 @@
     background: #e8ecf1;
     color: #667eea;
   }
+
+  &.btn-danger {
+    background: #fee;
+    color: #c00;
+
+    &:hover {
+      background: #fcc;
+    }
+  }
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }

@@ -18,7 +18,7 @@ import {
 export class AISchemaGeneratorComponent {
   @Input() projectId: string = '';
   @Output() close = new EventEmitter<void>();
-  @Output() schemaCreated = new EventEmitter<SyntheticSchemaDto>();
+  @Output() schemaCreated = new EventEmitter<{ datasetId: string }>();
 
   currentStep: 'description' | 'questions' | 'review' = 'description';
   loading = false;
@@ -37,8 +37,11 @@ export class AISchemaGeneratorComponent {
 
   // Step 3: Review
   schema: SyntheticSchemaDto | null = null;
+  datasetName = '';
   minConfidence = 0;
   filteredComponents: SchemaComponent[] = [];
+
+  constructor(private apiService: ApiService) {}
 
   startConversation(): void {
     if (!this.description.trim()) {
@@ -56,8 +59,6 @@ export class AISchemaGeneratorComponent {
       domainExpertise: this.domainExpertise || undefined
     }).subscribe({
       next: (response) => {
-        console.log('AI Schema Response:', response);
-
         if (!response) {
           this.error = 'Received empty response from server';
           this.loading = false;
@@ -66,8 +67,6 @@ export class AISchemaGeneratorComponent {
 
         this.conversationId = response.conversationId;
         this.clarifyingQuestions = response.clarifyingQuestions || [];
-
-        console.log('Clarifying questions:', this.clarifyingQuestions);
 
         // Initialize answers map
         this.answers.clear();
@@ -85,7 +84,7 @@ export class AISchemaGeneratorComponent {
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Failed to start conversation. Please try again.';
+        this.error = err?.error?.message || 'Failed to start conversation. Is Ollama running?';
         this.loading = false;
         console.error(err);
       }
@@ -96,23 +95,25 @@ export class AISchemaGeneratorComponent {
     this.loading = true;
     this.error = null;
 
-    // Convert Map to object
-    const answersObj: { [key: string]: any } = {};
+    // Convert Map to AnswerDto[] format expected by backend
+    const answersArray: Array<{ questionId: string; answer: string }> = [];
     this.answers.forEach((value, key) => {
-      answersObj[key] = value;
+      answersArray.push({ questionId: key, answer: String(value) });
     });
 
     this.apiService.refineSchema(this.projectId, this.conversationId, {
-      answers: answersObj
+      answers: answersArray
     }).subscribe({
       next: (response) => {
         this.schema = response.schema;
-        this.filteredComponents = this.schema.components;
+        this.filteredComponents = this.schema?.rootStructure?.components || [];
+        // Default dataset name from schema metadata
+        this.datasetName = this.schema?.schemaMetadata?.name || this.description.substring(0, 50);
         this.currentStep = 'review';
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Failed to generate schema. Please try again.';
+        this.error = err?.error?.message || 'Failed to generate schema. Please try again.';
         this.loading = false;
         console.error(err);
       }
@@ -120,17 +121,29 @@ export class AISchemaGeneratorComponent {
   }
 
   createDataset(): void {
-    if (this.schema) {
-      this.schemaCreated.emit(this.schema);
-    }
+    if (!this.schema || !this.datasetName.trim()) return;
+
+    this.loading = true;
+    this.error = null;
+
+    this.apiService.createDatasetFromSchema(this.projectId, {
+      name: this.datasetName.trim(),
+      schema: this.schema,
+    }).subscribe({
+      next: (response) => {
+        this.loading = false;
+        this.schemaCreated.emit({ datasetId: response.datasetId });
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Failed to create dataset.';
+        this.loading = false;
+        console.error(err);
+      }
+    });
   }
 
   regenerate(): void {
     this.currentStep = 'description';
-    this.description = '';
-    this.businessContext = '';
-    this.targetRecordCount = null;
-    this.domainExpertise = '';
     this.clarifyingQuestions = [];
     this.answers.clear();
     this.schema = null;
@@ -152,8 +165,9 @@ export class AISchemaGeneratorComponent {
 
   onConfidenceChange(): void {
     if (this.schema) {
-      this.filteredComponents = this.schema.components.filter(
-        c => c.confidence >= this.minConfidence
+      const threshold = this.minConfidence / 100;
+      this.filteredComponents = (this.schema.rootStructure?.components || []).filter(
+        c => c.confidence >= threshold
       );
     }
   }
@@ -166,5 +180,14 @@ export class AISchemaGeneratorComponent {
     this.answers.set(questionId, value);
   }
 
-  constructor(private apiService: ApiService) {}
+  getFieldNames(component: SchemaComponent): string[] {
+    return Object.keys(component.fields || {});
+  }
+
+  getRuleTypeSummary(component: SchemaComponent): string {
+    const rules = component.metadata?.generationRules || [];
+    if (rules.length === 0) return 'No rules';
+    const types = new Set(rules.map(r => r.ruleType));
+    return Array.from(types).join(', ');
+  }
 }

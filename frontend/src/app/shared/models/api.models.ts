@@ -81,32 +81,77 @@ export interface GenerateSchemaResponse {
 }
 
 export interface RefineSchemaDto {
-  answers: { [key: string]: any };
+  answers: Array<{ questionId: string; answer: string }>;
+}
+
+export interface SchemaField {
+  type: string;
+  confidence: number;
+  description: string;
+  constraints?: any;
+}
+
+export interface GenerationRule {
+  ruleId: string;
+  ruleType: 'deterministic' | 'statistical' | 'llm_prompt';
+  confidence: number;
+  priority: number;
+  inputs: string[];
+  outputs: string[];
+  generatorName?: string;
+  parameters?: any;
+  distribution?: string;
+  distributionParams?: any;
+  promptTemplate?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export interface SchemaComponent {
-  name: string;
-  dataType: string;
+  id: string;
+  componentType: string;
   description: string;
-  constraints?: any;
   confidence: number;
-  reasoning: string;
+  isArray: boolean;
+  fields: { [fieldName: string]: SchemaField };
+  metadata: {
+    position: number;
+    required: boolean;
+    callbackReferences: string[];
+    dependsOn?: string[];
+    generationRules: GenerationRule[];
+  };
 }
 
 export interface SyntheticSchemaDto {
-  name: string;
-  description: string;
-  businessContext: string;
-  targetRecordCount: number;
-  components: SchemaComponent[];
-  relationships: any[];
-  metadata: {
-    conversationId: string;
-    clarifyingQuestions: ClarifyingQuestion[];
-    answers: { [key: string]: any };
+  schemaMetadata: {
+    name: string;
+    description: string;
+    datasetType: string;
+    llmModel: string;
+    conversationTurns: number;
+    overallConfidence: number;
+    createdAt: string;
+    conversionDuration: number;
+  };
+  primitiveTypes: string[];
+  rootStructure: {
+    type: 'composite';
+    componentCount: number;
+    components: SchemaComponent[];
   };
 }
 
 export interface RefineSchemaResponse {
   schema: SyntheticSchemaDto;
+  conversationHistory: Array<{
+    turn: number;
+    role: string;
+    content: string;
+  }>;
+  timing: {
+    startTime: number;
+    endTime: number;
+    duration: number;
+  };
 }

@@ -1,0 +1,38 @@
+{
+  "id": "medical-records",
+  "name": "Medical Patient Records",
+  "description": "Synthetic patient records for healthcare ML training with demographics, vitals, and diagnoses",
+  "category": "healthcare",
+  "schema": {
+    "fields": [
+      { "name": "patient_id", "type": "string", "constraints": { "pattern": "P[0-9]{8}" } },
+      { "name": "first_name", "type": "string", "constraints": {} },
+      { "name": "last_name", "type": "string", "constraints": {} },
+      { "name": "date_of_birth", "type": "date", "constraints": {} },
+      { "name": "gender", "type": "string", "constraints": { "enum": ["male", "female", "other"] } },
+      { "name": "blood_type", "type": "string", "constraints": { "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] } },
+      { "name": "height_cm", "type": "number", "constraints": { "min": 120, "max": 220 } },
+      { "name": "weight_kg", "type": "number", "constraints": { "min": 30, "max": 200 } },
+      { "name": "systolic_bp", "type": "number", "constraints": { "min": 80, "max": 200 } },
+      { "name": "diastolic_bp", "type": "number", "constraints": { "min": 50, "max": 130 } },
+      { "name": "heart_rate", "type": "number", "constraints": { "min": 40, "max": 180 } },
+      { "name": "primary_diagnosis", "type": "string", "constraints": { "enum": ["hypertension", "diabetes_type2", "asthma", "arthritis", "depression", "anxiety", "migraine", "allergies", "healthy"] } },
+      { "name": "is_smoker", "type": "boolean", "constraints": {} },
+      { "name": "visit_date", "type": "date", "constraints": {} },
+      { "name": "notes", "type": "string", "constraints": {} }
+    ]
+  },
+  "defaultRules": {
+    "patient_id": { "generate": "sequential", "parameters": { "prefix": "P", "padLength": 8 } },
+    "first_name": { "generate": "faker_firstName" },
+    "last_name": { "generate": "faker_lastName" },
+    "date_of_birth": { "generate": "faker_date" },
+    "height_cm": { "distribution": "normal", "mean": 170, "stddev": 10 },
+    "weight_kg": { "distribution": "normal", "mean": 75, "stddev": 15 },
+    "systolic_bp": { "distribution": "normal", "mean": 120, "stddev": 15 },
+    "diastolic_bp": { "distribution": "normal", "mean": 80, "stddev": 10 },
+    "heart_rate": { "distribution": "normal", "mean": 72, "stddev": 12 },
+    "is_smoker": { "generate": "faker_boolean" },
+    "visit_date": { "generate": "faker_date" }
+  }
+}

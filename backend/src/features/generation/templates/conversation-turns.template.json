@@ -1,0 +1,26 @@
+{
+  "id": "conversation-turns",
+  "name": "Conversation Turns",
+  "description": "Multi-turn conversation data for chatbot training and NLP model evaluation",
+  "category": "nlp",
+  "schema": {
+    "fields": [
+      { "name": "conversation_id", "type": "string", "constraints": {} },
+      { "name": "turn_number", "type": "number", "constraints": { "min": 1, "max": 50 } },
+      { "name": "role", "type": "string", "constraints": { "enum": ["user", "assistant", "system"] } },
+      { "name": "content", "type": "string", "constraints": {} },
+      { "name": "timestamp", "type": "date", "constraints": {} },
+      { "name": "intent", "type": "string", "constraints": { "enum": ["greeting", "question", "complaint", "request", "feedback", "farewell", "clarification"] } },
+      { "name": "sentiment", "type": "string", "constraints": { "enum": ["positive", "neutral", "negative"] } },
+      { "name": "confidence_score", "type": "number", "constraints": { "min": 0, "max": 1 } },
+      { "name": "language", "type": "string", "constraints": { "enum": ["en", "es", "fr", "de", "zh", "ja"] } },
+      { "name": "topic", "type": "string", "constraints": { "enum": ["billing", "technical_support", "product_info", "account", "general"] } }
+    ]
+  },
+  "defaultRules": {
+    "conversation_id": { "generate": "faker_uuid" },
+    "turn_number": { "generate": "faker_number", "parameters": { "min": 1, "max": 20 } },
+    "timestamp": { "generate": "faker_date" },
+    "confidence_score": { "distribution": "uniform", "min": 0.5, "max": 1.0 }
+  }
+}

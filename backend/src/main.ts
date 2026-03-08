@@ -47,7 +47,6 @@ async function bootstrap() {
     .setDescription('API documentation for the Syndata application')
     .setVersion('1.0')
     .addTag('Auth', 'Authentication endpoints')
-    .addTag('Notes', 'Notes management endpoints')
     .addTag('Health', 'Health check endpoints')
     .addBearerAuth()
     .build();

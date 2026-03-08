@@ -44,7 +44,7 @@ export class SchemaGeneratorService {
           requestId,
         );
 
-        lastResponse = JSON.parse(response);
+        lastResponse = JSON.parse(this.extractJson(response));
 
         // Validate that questions were asked
         if (
@@ -96,11 +96,11 @@ export class SchemaGeneratorService {
         userPrompt,
         systemPrompt,
         0.7,
-        4000,
+        8000,
         requestId,
       );
 
-      const schema: SyntheticSchemaDto = JSON.parse(response);
+      const schema: SyntheticSchemaDto = JSON.parse(this.extractJson(response));
 
       // Validate schema coherence
       this.validateSchema(schema);
@@ -141,46 +141,77 @@ export class SchemaGeneratorService {
   }
 
   private buildSystemPromptForQuestions(): string {
-    return `You are an expert data schema designer.
-Your task is to understand dataset requirements and ask clarifying questions.
+    return `You are an expert data schema designer. Your task is to understand dataset requirements and ask clarifying questions.
 
-You MUST ask exactly 1-2 clarifying questions before the user provides more information.
-Never skip asking questions - this is mandatory.
+You MUST ask exactly 1-2 clarifying questions. Never skip asking questions.
 
-Guidelines:
-- Components can be any type (flat records, conversations, hierarchies)
-- Fields can use primitives: string, number, date, boolean, email
-- Generation rules can be: deterministic, statistical, or llm_prompt
-- All structures are dynamic based on user needs
+CRITICAL: Your entire response must be a single valid JSON object. No markdown, no code fences, no explanation text before or after. Do not use bold (**) or any formatting inside JSON string values.
 
-Respond ONLY with valid JSON:
-{
-  "clarifyingQuestions": [
-    {
-      "questionId": "q1",
-      "question": "Your question here?",
-      "questionType": "categorical|numeric|open_text"
-    }
-  ],
-  "thoughtProcess": "Your reasoning about what you need to understand"
-}`;
+Required JSON format:
+{"clarifyingQuestions":[{"questionId":"q1","question":"Your question here?","questionType":"open_text"}],"thoughtProcess":"Your reasoning"}`;
   }
 
   private buildSystemPromptForSchema(): string {
-    return `You are an expert data schema designer for the Syndata system.
-Your task is to generate a complete, dynamic schema based on user requirements.
+    return `You are an expert data schema designer for the Syndata synthetic data system.
 
-Schema Requirements:
-- Dynamic structure: any component types, fields, and generation rules
-- Confidence scores: 0-1 for components, fields, and rules
-- Generation rules: deterministic, statistical, or llm_prompt
-- Primitive types: string, number, date, boolean, email
-- Support for arrays, composition, callbacks/references between components
+CRITICAL: Your entire response must be a single valid JSON object. No markdown, no code fences, no explanation before or after. Do not use bold (**) or any formatting inside JSON string values.
 
-Respond ONLY with valid JSON following the SyntheticSchemaDto format.
-Include detailed generation rules for each field.
-Set realistic confidence scores (0.7-0.95 for certain rules, 0.3-0.6 for uncertain).
-Include reasoning for each component in the description field.`;
+Generate a complete schema following this exact structure:
+{
+  "schemaMetadata": {
+    "name": "short_name",
+    "description": "What this dataset represents",
+    "datasetType": "tabular",
+    "llmModel": "ministral-3",
+    "conversationTurns": 2,
+    "overallConfidence": 0.85,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "conversionDuration": 0
+  },
+  "primitiveTypes": ["string","number","date","boolean","email"],
+  "rootStructure": {
+    "type": "composite",
+    "componentCount": 1,
+    "components": [
+      {
+        "id": "comp_1",
+        "componentType": "record_type_name",
+        "description": "What this component represents",
+        "confidence": 0.85,
+        "isArray": false,
+        "fields": {
+          "field_name": {
+            "type": "string",
+            "confidence": 0.9,
+            "description": "Field description"
+          }
+        },
+        "metadata": {
+          "position": 0,
+          "required": true,
+          "callbackReferences": [],
+          "generationRules": [
+            {
+              "ruleId": "rule_1",
+              "ruleType": "deterministic",
+              "confidence": 0.9,
+              "priority": 1,
+              "inputs": [],
+              "outputs": ["field_name"],
+              "generatorName": "faker_name"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+Available deterministic generators: faker_email, faker_name, faker_firstName, faker_lastName, faker_phone, faker_address, faker_city, faker_country, faker_company, faker_uuid, faker_date, faker_boolean, faker_number (params: min, max), enum_select (params: values array), constant (params: value), sequential (params: start, increment).
+
+Statistical rule types: normal (params: mean, stddev), uniform (params: min, max), exponential (params: lambda), poisson (params: lambda).
+
+Use llm_prompt ruleType sparingly - only for complex contextual values. Set confidence 0.7-0.95 for certain elements, 0.3-0.6 for uncertain.`;
   }
 
   private buildUserPromptForDescription(
@@ -213,20 +244,39 @@ Include reasoning for each component in the description field.`;
       .map((a) => `Q: (${a.questionId}) - A: ${a.answer}`)
       .join('\n');
 
-    return `
-Original Description: ${description}
+    return `Original Description: ${description}
 
-Clarifying Question Answers:
+Answers:
 ${answersText}
 
-Now generate the complete schema with:
-1. All necessary components
-2. Fields for each component with types and constraints
-3. Generation rules (deterministic, statistical, or llm_prompt) for each field
-4. Confidence scores for each element
-5. Callbacks/references between components if relevant
+Generate the schema JSON now. Keep it compact:
+- Use 1-2 components with up to 15 fields total
+- Put generation rules in the component metadata.generationRules array (not inside each field)
+- Use short field descriptions
+- Prefer deterministic generators over llm_prompt (use llm_prompt only for 1-2 complex fields)
+- Return valid JSON only, no markdown`;
+  }
 
-Return valid JSON only.`;
+  /**
+   * Extract JSON from LLM response that may be wrapped in markdown code fences
+   */
+  private extractJson(response: string): string {
+    let text = response.trim();
+
+    // Remove markdown code fences
+    const jsonBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (jsonBlockMatch) {
+      text = jsonBlockMatch[1].trim();
+    }
+
+    // Find first { and last } to extract JSON object
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      text = text.substring(firstBrace, lastBrace + 1);
+    }
+
+    return text;
   }
 
   private validateSchema(schema: SyntheticSchemaDto): void {
@@ -240,15 +290,17 @@ Return valid JSON only.`;
 
     const componentIds = new Set(schema.rootStructure.components.map((c) => c.id));
 
-    // Validate all references exist
+    // Warn about invalid references but don't fail - LLMs sometimes reference fields as components
     for (const component of schema.rootStructure.components) {
       if (component.metadata?.callbackReferences) {
-        for (const ref of component.metadata.callbackReferences) {
-          if (!componentIds.has(ref)) {
-            throw new BadRequestException(
-              `Component ${component.id} references non-existent component ${ref}`,
-            );
-          }
+        const validRefs = component.metadata.callbackReferences.filter(
+          (ref) => componentIds.has(ref),
+        );
+        if (validRefs.length !== component.metadata.callbackReferences.length) {
+          this.logger.warn(
+            `Component ${component.id} has invalid callback references, cleaning up`,
+          );
+          component.metadata.callbackReferences = validRefs;
         }
       }
     }

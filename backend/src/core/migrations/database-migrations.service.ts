@@ -38,7 +38,6 @@ export class DatabaseMigrationsService implements OnModuleInit {
       );
 
       // Add future migrations here
-      // await this.runMigration('002_add_notes_table', () => this.migration002AddNotesTable());
     } catch (error) {
       this.logger.error('Migration failed', error);
       throw error;
@@ -125,24 +124,4 @@ export class DatabaseMigrationsService implements OnModuleInit {
     `);
   }
 
-  /**
-   * Example of how to add a new migration:
-   *
-   * private async migration002AddNotesTable(): Promise<void> {
-   *   await this.dataSource.query(`
-   *     CREATE TABLE IF NOT EXISTS notes (
-   *       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-   *       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-   *       title VARCHAR(255) NOT NULL,
-   *       content TEXT,
-   *       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-   *       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   *     );
-   *   `);
-   *
-   *   await this.dataSource.query(`
-   *     CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
-   *   `);
-   * }
-   */
 }

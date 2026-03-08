@@ -1,17 +1,21 @@
+$primary: #667eea;
+$primary-dark: #5a6fd6;
+$bg-light: #f5f7fa;
+$text-muted: #888;
+$border: #e0e0e0;
+$danger: #e53e3e;
+
 .dataset-detail {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
 .back-link {
   display: inline-block;
   margin-bottom: 1.5rem;
-  color: #667eea;
+  color: $primary;
   text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 }
 
 .loading, .error-message {
@@ -22,74 +26,475 @@
 .error-message {
   background: #fee;
   color: #c00;
-  border-radius: 4px;
+  border-radius: 6px;
 }
+
+// === Main card ===
 
 .dataset-info {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 
-  h1 {
-    margin: 0 0 0.5rem 0;
-  }
+  h1 { margin: 0 0 0.25rem 0; }
 
-  .meta {
-    color: #999;
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
-  }
-
-  .section {
-    margin-bottom: 2rem;
-
-    h2 {
-      font-size: 1.2rem;
-      margin: 0 0 1rem 0;
-    }
-  }
-
-  .schema-display {
-    background: #f5f7fa;
-    padding: 1rem;
-    border-radius: 4px;
-    overflow-x: auto;
-    font-size: 0.9rem;
-  }
-
-  .empty {
-    padding: 2rem;
-    background: #f5f7fa;
-    border-radius: 4px;
-    text-align: center;
-    color: #666;
-  }
-
-  .elements-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .element-item {
+  .dataset-title-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
-    background: #f5f7fa;
+  }
+
+  .meta {
+    color: $text-muted;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+}
+
+.section {
+  margin-bottom: 2rem;
+  h2 { font-size: 1.15rem; margin: 0; }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+// === Fields table ===
+
+.fields-table {
+  border: 1px solid $border;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.fields-header {
+  display: flex;
+  background: $bg-light;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #666;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid $border;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: #fafbff; }
+}
+
+.col-name { flex: 2; min-width: 0; }
+.col-type { flex: 1; min-width: 0; }
+.col-details {
+  flex: 3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.col-actions {
+  flex: 0 0 auto;
+  width: 120px;
+  text-align: right;
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+.field-name {
+  font-weight: 500;
+  color: #333;
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 0.9rem;
+}
+
+.field-details {
+  color: $text-muted;
+  font-size: 0.85rem;
+}
+
+.type-badge {
+  display: inline-block;
+  background: $primary;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+// === Inline edit form ===
+
+.field-edit-form {
+  background: #f8f9fe;
+  border: 1px solid darken($bg-light, 6%);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 0;
+
+  .form-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    color: #444;
+  }
+}
+
+// Inside the table, no border-radius on inline edits
+.fields-table .field-edit-form {
+  border-radius: 0;
+  border-left: 3px solid $primary;
+  border-right: none;
+  border-top: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-field-form {
+  margin-top: 0.75rem;
+  border: 2px dashed darken($bg-light, 10%);
+  background: white;
+}
+
+.edit-form-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.edit-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-group {
+  flex: 1;
+  min-width: 0;
+
+  &.full-width { flex: 1 1 100%; }
+
+  label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    color: #555;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid $border;
     border-radius: 4px;
+    font-size: 0.88rem;
+    box-sizing: border-box;
+    background: white;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba($primary, 0.12);
+    }
+  }
+
+  textarea {
+    font-family: 'SFMono-Regular', 'Consolas', monospace;
+    resize: vertical;
+  }
+}
+
+// === Add field button ===
+
+.btn-add-field {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  background: white;
+  color: $primary;
+  border: 2px dashed darken($bg-light, 10%);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: $primary;
+    background: #f8f9fe;
+  }
+}
+
+// === LLM options ===
+
+.llm-options-section {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f0f4ff;
+  border: 1px solid #d0d8f0;
+  border-radius: 6px;
+
+  .llm-options-header {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}
+
+.slider-with-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  input[type="range"] {
+    flex: 1;
+  }
+
+  .slider-value {
+    min-width: 2rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: $primary;
+  }
+}
+
+.examples-section {
+  margin-top: 0.5rem;
+
+  > label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #4a5568;
+    margin-bottom: 0.35rem;
+  }
+
+  .example-row {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    align-items: flex-start;
+
+    textarea {
+      flex: 1;
+      font-size: 0.85rem;
+      padding: 0.4rem;
+      border: 1px solid $border;
+      border-radius: 4px;
+      resize: vertical;
+      font-family: inherit;
+    }
+  }
+}
+
+.btn-add-example {
+  background: none;
+  border: 1px dashed #b0baf0;
+  color: $primary;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.25rem;
+
+  &:hover {
+    background: #e8ecff;
+    border-color: $primary;
+  }
+}
+
+// === JSON editor ===
+
+.schema-editor {
+  .schema-error {
+    background: #fee;
+    color: #c00;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .schema-textarea {
+    width: 100%;
+    font-family: 'SFMono-Regular', 'Consolas', monospace;
+    font-size: 0.88rem;
+    padding: 1rem;
+    border: 1px solid $border;
+    border-radius: 6px;
+    background: white;
+    resize: vertical;
+    box-sizing: border-box;
+    line-height: 1.5;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba($primary, 0.12);
+    }
+  }
+}
+
+// === Elements ===
+
+.elements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.element-card {
+  padding: 0.75rem 1rem;
+  background: $bg-light;
+  border-radius: 6px;
+  border: 1px solid #eee;
+
+  .element-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
     strong {
       color: #333;
+      font-family: 'SFMono-Regular', 'Consolas', monospace;
+      font-size: 0.9rem;
     }
+  }
 
-    .type-badge {
-      background: #667eea;
-      color: white;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-    }
+  .element-props {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .element-prop {
+    font-size: 0.8rem;
+    color: #666;
+    background: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e8e8e8;
+  }
+}
+
+.empty {
+  padding: 2rem;
+  background: $bg-light;
+  border-radius: 6px;
+  text-align: center;
+  color: #666;
+  border: 1px solid #eee;
+}
+
+// === Buttons ===
+
+.btn-primary {
+  background: $primary;
+  color: white;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  &:hover:not(:disabled) { background: $primary-dark; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-secondary {
+  background: white;
+  color: $primary;
+  border: 1px solid $primary;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  &:hover { background: #f0f2ff; }
+}
+
+.btn-cancel {
+  background: white;
+  color: #666;
+  border: 1px solid $border;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  &:hover { background: #f5f5f5; }
+}
+
+.btn-danger-outline {
+  background: white;
+  color: $danger;
+  border: 1px solid $danger;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  &:hover { background: #fee; }
+}
+
+.btn-toggle {
+  background: white;
+  color: #555;
+  border: 1px solid $border;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  &:hover { background: #f5f5f5; }
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid transparent;
+  color: #888;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: #eee;
+    color: #444;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+
+.btn-icon-danger {
+  &:hover:not(:disabled) {
+    background: #fee;
+    color: $danger;
   }
 }

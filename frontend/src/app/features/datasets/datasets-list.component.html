@@ -49,8 +49,9 @@
           <td>{{ dataset.name }}</td>
           <td>{{ dataset.elements?.length || 0 }}</td>
           <td>{{ dataset.createdAt | date:'short' }}</td>
-          <td>
+          <td class="actions-cell">
             <a [routerLink]="['/datasets', dataset.id]" class="btn btn-small btn-secondary">View</a>
+            <button class="btn btn-small btn-danger" (click)="deleteDataset(dataset)">Delete</button>
           </td>
         </tr>
       </tbody>

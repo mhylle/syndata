@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/services/api.service';
-import { Dataset, SyntheticSchemaDto } from '../../shared/models/api.models';
+import { Dataset } from '../../shared/models/api.models';
 import { AISchemaGeneratorComponent } from './ai-schema-generator.component';
 
 @Component({
@@ -91,20 +91,18 @@ export class DatasetsListComponent implements OnInit {
     this.showAIModal = false;
   }
 
-  onSchemaCreated(schema: SyntheticSchemaDto): void {
-    this.showAIModal = false;
-    // Create dataset with the generated schema
-    this.apiService.createDataset(this.selectedProjectId, {
-      name: schema.name,
-      schemaDefinition: schema
-    }).subscribe({
-      next: () => {
-        this.loadDatasets();
-      },
-      error: (err) => {
-        this.error = 'Failed to create dataset from generated schema';
-        console.error(err);
-      }
+  deleteDataset(dataset: Dataset): void {
+    if (!confirm(`Delete "${dataset.name}" and all its generated data? This cannot be undone.`)) {
+      return;
+    }
+    this.apiService.deleteDataset(this.selectedProjectId, dataset.id).subscribe({
+      next: () => this.loadDatasets(),
+      error: () => this.error = 'Failed to delete dataset',
     });
+  }
+
+  onSchemaCreated(event: { datasetId: string }): void {
+    this.showAIModal = false;
+    this.loadDatasets();
   }
 }

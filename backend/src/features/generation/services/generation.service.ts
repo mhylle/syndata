@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { GenerationJobEntity } from '../../../shared/entities/generation-job.entity';
 import { RecordEntity } from '../../../shared/entities/record.entity';
 import { FieldValueEntity } from '../../../shared/entities/field-value.entity';
+import { ElementInstanceEntity } from '../../../shared/entities/element-instance.entity';
 import { SyntheticSchemaEntity } from '../../../shared/entities/synthetic-schema.entity';
 import { DatasetService } from '../../datasets/services/dataset.service';
 import { ValidationService } from './validation.service';
@@ -13,6 +14,8 @@ import { SimpleDataGeneratorService } from './simple-data-generator.service';
 import { AnnotationService } from './annotation.service';
 import { OllamaService } from './ollama.service';
 import { GenerateDto } from '../dto/generate.dto';
+import { CompositeGeneratorService } from './composite-generator.service';
+import { CallbackService } from './callback.service';
 import { faker } from '@faker-js/faker';
 
 @Injectable()
@@ -34,6 +37,8 @@ export class GenerationService {
     private generator: SimpleDataGeneratorService,
     private annotationService: AnnotationService,
     private ollamaService: OllamaService,
+    private compositeGenerator: CompositeGeneratorService,
+    private callbackService: CallbackService,
   ) {}
 
   async generate(projectId: string, generateDto: GenerateDto): Promise<GenerationJobEntity> {
@@ -60,9 +65,13 @@ export class GenerationService {
     });
     await this.jobRepository.save(job);
 
-    // Run generation asynchronously
-    this.runGeneration(job, dataset.schemaDefinition, rules).catch((error) => {
-      console.error('Generation failed:', error);
+    // Run generation asynchronously -- composite or simple
+    const runner = generateDto.compositionConfig
+      ? this.runCompositeGeneration(job, dataset, generateDto.compositionConfig)
+      : this.runGeneration(job, dataset.schemaDefinition, rules);
+
+    runner.catch((error) => {
+      this.logger.error('Generation failed:', error);
       job.status = 'failed';
       this.jobRepository.save(job);
     });
@@ -89,13 +98,17 @@ export class GenerationService {
       throw new BadRequestException('Dataset does not have a schema definition');
     }
 
-    // 2. Validate it's a SyntheticSchemaDto (has required structure)
+    // 2. Detect schema type and route accordingly
     const schema = dataset.schemaDefinition;
-    if (!schema.schemaMetadata || !schema.rootStructure) {
-      throw new BadRequestException('Invalid schema structure - missing schemaMetadata or rootStructure');
+    const isAISchema = !!(schema.schemaMetadata && schema.rootStructure);
+    const isSimpleSchema = !!(schema.fields && Array.isArray(schema.fields));
+
+    if (!isAISchema && !isSimpleSchema) {
+      throw new BadRequestException('Invalid schema structure - must have fields array or schemaMetadata/rootStructure');
     }
 
-    this.logger.log(`[${projectId}] Using AI schema: ${schema.schemaMetadata.name}`);
+    const schemaName = isAISchema ? schema.schemaMetadata.name : dataset.name;
+    this.logger.log(`[${projectId}] Using ${isAISchema ? 'AI' : 'simple'} schema: ${schemaName}`);
 
     // 3. Create generation job
     const job = this.jobRepository.create({
@@ -104,15 +117,19 @@ export class GenerationService {
       status: 'running',
       count,
       config: {
-        generationFilters,
-        schemaType: 'ai_generated',
-        schemaName: schema.schemaMetadata.name,
+        generationFilters: isAISchema ? generationFilters : undefined,
+        schemaType: isAISchema ? 'ai_generated' : 'simple',
+        schemaName,
       },
     });
     await this.jobRepository.save(job);
 
-    // 4. Run generation asynchronously
-    this.runAISchemaGeneration(job, schema, generationFilters).catch((error) => {
+    // 4. Run generation asynchronously — route based on schema type
+    const runner = isAISchema
+      ? this.runAISchemaGeneration(job, schema, generationFilters)
+      : this.runGeneration(job, schema);
+
+    runner.catch((error) => {
       this.logger.error(`[${projectId}] Generation failed: ${error.message}`);
       job.status = 'failed';
       this.jobRepository.save(job);
@@ -130,41 +147,89 @@ export class GenerationService {
     schema: any,
     rules?: any,
   ): Promise<void> {
-    try {
-      for (let i = 0; i < job.count; i++) {
-        const { record, sources } = this.generator.generateRecord(schema, rules);
+    const BATCH_SIZE = 100;
 
-        // Save record
+    try {
+      const recordBatch: RecordEntity[] = [];
+      const fieldValueBatch: FieldValueEntity[] = [];
+
+      for (let i = 0; i < job.count; i++) {
+        const recordRules = rules ? this.applyProbabilisticRules(rules) : undefined;
+        const { record, sources } = await this.generator.generateRecord(schema, recordRules);
+
         const recordEntity = this.recordRepository.create({
           projectId: job.projectId,
           generationJobId: job.id,
           data: record,
           isComposite: false,
         });
-        const savedRecord = await this.recordRepository.save(recordEntity);
+        recordBatch.push(recordEntity);
 
-        // Save field values with annotations
-        for (const fieldName of Object.keys(record)) {
-          const fieldValue = this.fieldValueRepository.create({
-            recordId: savedRecord.id,
-            fieldName,
-            value: record[fieldName],
-            dataType: schema.fields.find((f: any) => f.name === fieldName)?.type || 'string',
-          });
-          const savedFieldValue = await this.fieldValueRepository.save(fieldValue);
+        // Flush batch when full
+        if (recordBatch.length >= BATCH_SIZE || i === job.count - 1) {
+          const savedRecords = await this.recordRepository.save(recordBatch);
 
-          // Add field annotation
-          const { source, confidence } = sources[fieldName];
-          await this.annotationService.addFieldAnnotation(
-            savedFieldValue.id,
-            'source',
-            source,
-          );
-          await this.annotationService.addFieldAnnotation(
-            savedFieldValue.id,
-            'confidence',
-            confidence.toString(),
-          );
+          // Build field values for all records in the batch
+          for (let j = 0; j < savedRecords.length; j++) {
+            const savedRecord = savedRecords[j];
+            const batchRecord = recordBatch[j];
+            for (const fieldName of Object.keys(batchRecord.data)) {
+              fieldValueBatch.push(this.fieldValueRepository.create({
+                recordId: savedRecord.id,
+                fieldName,
+                value: batchRecord.data[fieldName],
+                dataType: schema.fields?.find((f: any) => f.name === fieldName)?.type || 'string',
+              }));
+            }
+          }
+
+          // Bulk save field values
+          if (fieldValueBatch.length > 0) {
+            await this.fieldValueRepository.save(fieldValueBatch);
+            fieldValueBatch.length = 0;
+          }
+
+          recordBatch.length = 0;
+
+          // Update progress
+          job.progress = Math.round(((i + 1) / job.count) * 100);
+          await this.jobRepository.save(job);
+        }
+      }
+
+      job.status = 'completed';
+      job.progress = 100;
+      job.completedAt = new Date();
+      await this.jobRepository.save(job);
+    } catch (error) {
+      job.status = 'failed';
+      job.completedAt = new Date();
+      await this.jobRepository.save(job);
+      throw error;
+    }
+  }
+
+  private async runCompositeGeneration(
+    job: GenerationJobEntity,
+    dataset: any,
+    compositionConfig: any,
+  ): Promise<void> {
+    try {
+      for (let i = 0; i < job.count; i++) {
+        const { record, instances } = await this.compositeGenerator.generateCompositeRecord(
+          dataset.id,
+          compositionConfig,
+          dataset.schemaDefinition,
+        );
+
+        record.projectId = job.projectId;
+        record.generationJobId = job.id;
+        const savedRecord = await this.recordRepository.save(record);
+
+        // Save element instances
+        for (const instance of instances) {
+          instance.recordId = savedRecord.id;
+          await this.recordRepository.manager.save(ElementInstanceEntity, instance);
         }
       }
 
@@ -184,30 +249,38 @@ export class GenerationService {
     schema: any,
     generationFilters?: any,
   ): Promise<void> {
+    const BATCH_SIZE = 50;
+
     try {
       this.logger.log(`[${job.projectId}] Starting generation of ${job.count} records from AI schema`);
 
+      const batch: RecordEntity[] = [];
+
       for (let i = 0; i < job.count; i++) {
-        // Generate a single record using the dynamic schema
         const recordEntity = await this.generateRecordFromDynamicSchema(
           schema.rootStructure,
-          [], // Generation rules are embedded in component metadata
+          [],
           generationFilters,
         );
 
-        // Set job and project IDs
         recordEntity.projectId = job.projectId;
         recordEntity.generationJobId = job.id;
+        batch.push(recordEntity);
 
-        // Save the record
-        await this.recordRepository.save(recordEntity);
+        // Flush batch
+        if (batch.length >= BATCH_SIZE || i === job.count - 1) {
+          await this.recordRepository.save(batch);
+          batch.length = 0;
 
-        if ((i + 1) % 10 === 0) {
+          job.progress = Math.round(((i + 1) / job.count) * 100);
+          await this.jobRepository.save(job);
+
           this.logger.log(`[${job.projectId}] Generated ${i + 1}/${job.count} records`);
         }
       }
 
       job.status = 'completed';
+      job.progress = 100;
       job.completedAt = new Date();
       await this.jobRepository.save(job);
 
@@ -329,6 +402,9 @@ export class GenerationService {
       minField: generationFilters?.minFieldConfidence ?? 0.4,
     };
 
+    // Track generated components for callback resolution
+    const generatedComponents = new Map<string, Record<string, any>>();
+
     // Process each component in the schema
     for (const component of rootStructure.components || []) {
       // Skip low-confidence components
@@ -354,12 +430,13 @@ export class GenerationService {
         }
 
         // Find applicable generation rules for this field
-        const applicableRules = (component.metadata?.generationRules || [])
-          .filter(
-            (rule: any) =>
-              rule.outputs.includes(fieldName) &&
-              rule.confidence >= filters.minRule,
-          )
+        // Check both component-level and field-level rules (LLMs may place rules in either location)
+        const componentRules = (component.metadata?.generationRules || [])
+          .filter((rule: any) => rule.outputs.includes(fieldName));
+        const fieldRules = (fieldTyped.metadata?.generationRules || []);
+        const allRules = [...componentRules, ...fieldRules];
+        const applicableRules = allRules
+          .filter((rule: any) => rule.confidence >= filters.minRule)
           .sort((a: any, b: any) => b.priority - a.priority); // Sort by priority (highest first)
 
         // Probabilistic rule execution
@@ -369,7 +446,11 @@ export class GenerationService {
           // Execute rule based on confidence (e.g., 0.9 confidence = 90% chance of execution)
           if (random <= rule.confidence) {
             try {
-              fieldValue = await this.executeGenerationRule(rule, componentData);
+              const contextWithCallbacks = {
+                ...componentData,
+                _callbackContext: this.callbackService.buildCallbackContext(generatedComponents),
+              };
+              fieldValue = await this.executeGenerationRule(rule, contextWithCallbacks);
               if (fieldValue !== null) {
                 break; // Stop at first successful rule execution
               }
@@ -388,7 +469,9 @@ export class GenerationService {
         }
       }
 
-      // Store component data (use component ID as key)
+      // Store component data for callbacks and output
+      generatedComponents.set(component.id, componentData);
+      generatedComponents.set(component.componentType, componentData);
       data[component.componentType] = componentData;
     }
 
@@ -413,6 +496,13 @@ export class GenerationService {
         return this.executeDeterministicRule(rule);
       case 'statistical':
         return this.executeStatisticalRule(rule);
+      // LLMs sometimes use distribution names directly as ruleType
+      case 'normal':
+      case 'uniform':
+      case 'exponential':
+      case 'poisson':
+      case 'lognormal':
+        return this.executeStatisticalRule({ ...rule, distribution: rule.ruleType, distributionParams: rule.params || rule.distributionParams });
       case 'llm_prompt':
         return await this.executeLLMRule(rule, context);
       default:
@@ -428,7 +518,7 @@ export class GenerationService {
    */
   private executeDeterministicRule(rule: any): any {
     const generator = rule.generatorName;
-    const params = rule.parameters || {};
+    const params = rule.parameters || rule.params || {};
 
     // Map to existing faker generators
     if (generator === 'faker_email') {
@@ -495,7 +585,7 @@ export class GenerationService {
    */
   private executeStatisticalRule(rule: any): any {
     const dist = rule.distribution;
-    const params = rule.distributionParams || {};
+    const params = rule.distributionParams || rule.params || {};
 
     if (dist === 'normal') {
       const mean = params.mean ?? 0;
@@ -535,8 +625,9 @@ export class GenerationService {
    */
   private async executeLLMRule(rule: any, context: Record<string, any>): Promise<string> {
     try {
-      // Fill prompt template with context variables
-      const prompt = this.fillPromptTemplate(rule.promptTemplate || '', context);
+      // Fill prompt template with context variables (LLMs may use 'prompt' or 'promptTemplate')
+      const template = rule.promptTemplate || rule.prompt || '';
+      const prompt = this.fillPromptTemplate(template, context);
 
       // Call Ollama with the prompt
       const response = await this.ollamaService.callModel(
@@ -562,9 +653,21 @@ export class GenerationService {
    */
   private fillPromptTemplate(template: string, context: any): string {
     let filled = template;
+
+    // Replace simple {{key}} references from current component context
     for (const [key, value] of Object.entries(context)) {
-      filled = filled.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+      if (typeof value !== 'object') {
+        filled = filled.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+      }
     }
+
+    // Resolve callback references {{prev.componentType.fieldName}}
+    filled = this.callbackService.resolveCallbacks(
+      filled,
+      [],
+      context._callbackContext || {},
+    );
+
     return filled;
   }
 
@@ -573,6 +676,25 @@ export class GenerationService {
    * @param values Array of possible values
    * @returns Random value from array
    */
+  /**
+   * Filter rules probabilistically based on their confidence scores.
+   * Rules without confidence are always included.
+   */
+  private applyProbabilisticRules(rules: Record<string, any>): Record<string, any> {
+    const filtered: Record<string, any> = {};
+    for (const [fieldName, rule] of Object.entries(rules)) {
+      if (rule && typeof rule === 'object' && 'confidence' in rule) {
+        if (Math.random() <= rule.confidence) {
+          filtered[fieldName] = rule;
+        }
+        // Skip rule for this record if random > confidence
+      } else {
+        filtered[fieldName] = rule;
+      }
+    }
+    return filtered;
+  }
+
   private randomEnum(values: any[]): any {
     if (!values || values.length === 0) {
       return null;

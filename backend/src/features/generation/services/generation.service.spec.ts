@@ -5,11 +5,15 @@ import { GenerationService } from './generation.service';
 import { GenerationJobEntity } from '../../../shared/entities/generation-job.entity';
 import { RecordEntity } from '../../../shared/entities/record.entity';
 import { FieldValueEntity } from '../../../shared/entities/field-value.entity';
+import { SyntheticSchemaEntity } from '../../../shared/entities/synthetic-schema.entity';
 import { DatasetService } from '../../datasets/services/dataset.service';
 import { ValidationService } from './validation.service';
 import { PatternAnalyzerService } from './pattern-analyzer.service';
 import { SimpleDataGeneratorService } from './simple-data-generator.service';
 import { AnnotationService } from './annotation.service';
+import { OllamaService } from './ollama.service';
+import { CompositeGeneratorService } from './composite-generator.service';
+import { CallbackService } from './callback.service';
 
 describe('GenerationService', () => {
   let service: GenerationService;
@@ -71,6 +75,19 @@ describe('GenerationService', () => {
             addFieldAnnotation: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(SyntheticSchemaEntity),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: OllamaService,
+          useValue: { callModel: jest.fn() },
+        },
+        {
+          provide: CompositeGeneratorService,
+          useValue: { generateCompositeRecord: jest.fn() },
+        },
+        CallbackService,
       ],
     }).compile();
 

@@ -94,7 +94,7 @@ export class SchemaParserService {
       errors.push('Circular dependency detected in component references');
     }
 
-    // Warn if too many LLM rules
+    // Warn if too many LLM rules (check both component-level and field-level rules)
     let llmRuleCount = 0;
     let totalRuleCount = 0;
     for (const component of schema.rootStructure.components) {
@@ -102,6 +102,15 @@ export class SchemaParserService {
         totalRuleCount++;
         if (rule.ruleType === 'llm_prompt') {
           llmRuleCount++;
+        }
+      }
+      // Also count field-level rules
+      for (const field of Object.values(component.fields || {})) {
+        for (const rule of (field as any).metadata?.generationRules || []) {
+          totalRuleCount++;
+          if (rule.ruleType === 'llm_prompt') {
+            llmRuleCount++;
+          }
         }
       }
     }

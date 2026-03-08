@@ -13,6 +13,10 @@ import { ProjectController } from './features/projects/controllers/project.contr
 import { ProjectService } from './features/projects/services/project.service';
 import { DatasetController } from './features/datasets/controllers/dataset.controller';
 import { DatasetService } from './features/datasets/services/dataset.service';
+import { UploadService } from './features/datasets/services/upload.service';
+import { VersionService } from './features/datasets/services/version.service';
+import { SharingService } from './features/datasets/services/sharing.service';
+import { SharingController } from './features/datasets/controllers/sharing.controller';
 import { GenerationController } from './features/generation/controllers/generation.controller';
 import { GenerationService } from './features/generation/services/generation.service';
 import { ValidationService } from './features/generation/services/validation.service';
@@ -22,6 +26,11 @@ import { AnnotationService } from './features/generation/services/annotation.ser
 import { SchemaGeneratorService } from './features/generation/services/schema-generator.service';
 import { SchemaParserService } from './features/generation/services/schema-parser.service';
 import { OllamaService } from './features/generation/services/ollama.service';
+import { CompositeGeneratorService } from './features/generation/services/composite-generator.service';
+import { CallbackService } from './features/generation/services/callback.service';
+import { ExportService } from './features/generation/services/export.service';
+import { TemplateService } from './features/generation/services/template.service';
+import { TemplateController } from './features/generation/controllers/template.controller';
 import {
   ProjectEntity,
   DatasetEntity,
@@ -32,6 +41,10 @@ import {
   FieldValueEntity,
   AnnotationEntity,
   SyntheticSchemaEntity,
+  ExampleDataEntity,
+  DatasetVersionEntity,
+  ElementVersionEntity,
+  SharedResourceEntity,
 } from './shared/entities';
 
 @Module({
@@ -61,6 +74,10 @@ import {
       FieldValueEntity,
       AnnotationEntity,
       SyntheticSchemaEntity,
+      ExampleDataEntity,
+      DatasetVersionEntity,
+      ElementVersionEntity,
+      SharedResourceEntity,
     ]),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
@@ -75,11 +92,14 @@ import {
     HealthModule,
     MigrationsModule,
   ],
-  controllers: [AppController, ProjectController, DatasetController, GenerationController],
+  controllers: [AppController, ProjectController, DatasetController, GenerationController, TemplateController, SharingController],
   providers: [
     AppService,
     ProjectService,
     DatasetService,
+    UploadService,
+    VersionService,
+    SharingService,
     GenerationService,
     ValidationService,
     PatternAnalyzerService,
@@ -88,6 +108,10 @@ import {
     SchemaGeneratorService,
     SchemaParserService,
     OllamaService,
+    CompositeGeneratorService,
+    CallbackService,
+    ExportService,
+    TemplateService,
   ],
 })
 export class AppModule {}

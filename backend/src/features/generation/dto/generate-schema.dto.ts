@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min, Max, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsObject, Min, Max, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GenerateSchemaDto {
@@ -37,19 +37,12 @@ export class RefineSchemaDto {
 
 export class CreateDatasetFromSchemaDto {
   @IsString()
-  schemaId: string;
-
-  @IsString()
   name: string;
+
+  @IsObject()
+  schema: any;
 
   @IsOptional()
   @IsString()
   description?: string;
-
-  @IsOptional()
-  generationFilters?: {
-    minComponentConfidence?: number;
-    minRuleConfidence?: number;
-    minFieldConfidence?: number;
-  };
 }

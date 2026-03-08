@@ -15,10 +15,16 @@ export class ValidationService {
         );
       }
 
-      const validTypes = ['string', 'number', 'date', 'boolean', 'email'];
+      const validTypes = ['string', 'number', 'integer', 'float', 'date', 'boolean', 'email', 'enum', 'uuid'];
       if (!validTypes.includes(field.type)) {
         throw new BadRequestException(
           `Field ${field.name} has invalid type: ${field.type}`,
+        );
+      }
+
+      if (field.type === 'enum' && (!field.values || !Array.isArray(field.values) || field.values.length === 0)) {
+        throw new BadRequestException(
+          `Field ${field.name} is type enum but has no values array`,
         );
       }
     });

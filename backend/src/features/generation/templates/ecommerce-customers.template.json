@@ -1,0 +1,36 @@
+{
+  "id": "ecommerce-customers",
+  "name": "E-Commerce Customers",
+  "description": "Customer profiles for e-commerce platforms with demographics, contact info, and purchase behavior",
+  "category": "commerce",
+  "schema": {
+    "fields": [
+      { "name": "customer_id", "type": "string", "constraints": { "pattern": "C[0-9]{6}" } },
+      { "name": "first_name", "type": "string", "constraints": {} },
+      { "name": "last_name", "type": "string", "constraints": {} },
+      { "name": "email", "type": "string", "constraints": { "pattern": "^[^@]+@[^@]+\\.[^@]+$" } },
+      { "name": "age", "type": "number", "constraints": { "min": 18, "max": 85 } },
+      { "name": "gender", "type": "string", "constraints": { "enum": ["male", "female", "non-binary", "prefer_not_to_say"] } },
+      { "name": "country", "type": "string", "constraints": {} },
+      { "name": "city", "type": "string", "constraints": {} },
+      { "name": "signup_date", "type": "date", "constraints": {} },
+      { "name": "is_premium", "type": "boolean", "constraints": {} },
+      { "name": "total_orders", "type": "number", "constraints": { "min": 0, "max": 500 } },
+      { "name": "total_spent", "type": "number", "constraints": { "min": 0, "max": 50000 } },
+      { "name": "preferred_category", "type": "string", "constraints": { "enum": ["electronics", "clothing", "home", "sports", "books", "food"] } }
+    ]
+  },
+  "defaultRules": {
+    "customer_id": { "generate": "sequential", "parameters": { "prefix": "C", "padLength": 6 } },
+    "first_name": { "generate": "faker_firstName" },
+    "last_name": { "generate": "faker_lastName" },
+    "email": { "generate": "faker_email" },
+    "age": { "distribution": "normal", "mean": 35, "stddev": 12 },
+    "country": { "generate": "faker_country" },
+    "city": { "generate": "faker_city" },
+    "signup_date": { "generate": "faker_date" },
+    "is_premium": { "generate": "faker_boolean" },
+    "total_orders": { "distribution": "poisson", "lambda": 15 },
+    "total_spent": { "distribution": "lognormal", "mu": 6, "sigma": 1.5 }
+  }
+}

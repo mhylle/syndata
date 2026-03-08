@@ -1,0 +1,35 @@
+{
+  "id": "financial-transactions",
+  "name": "Financial Transactions",
+  "description": "Transaction records for fraud detection, financial analytics, and compliance training data",
+  "category": "finance",
+  "schema": {
+    "fields": [
+      { "name": "transaction_id", "type": "string", "constraints": {} },
+      { "name": "account_id", "type": "string", "constraints": { "pattern": "ACC[0-9]{8}" } },
+      { "name": "timestamp", "type": "date", "constraints": {} },
+      { "name": "amount", "type": "number", "constraints": { "min": 0.01, "max": 100000 } },
+      { "name": "currency", "type": "string", "constraints": { "enum": ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD"] } },
+      { "name": "type", "type": "string", "constraints": { "enum": ["purchase", "withdrawal", "deposit", "transfer", "refund", "fee"] } },
+      { "name": "merchant_name", "type": "string", "constraints": {} },
+      { "name": "merchant_category", "type": "string", "constraints": { "enum": ["retail", "food", "travel", "entertainment", "utilities", "healthcare", "education", "other"] } },
+      { "name": "country", "type": "string", "constraints": {} },
+      { "name": "is_online", "type": "boolean", "constraints": {} },
+      { "name": "is_flagged", "type": "boolean", "constraints": {} },
+      { "name": "risk_score", "type": "number", "constraints": { "min": 0, "max": 1 } },
+      { "name": "balance_after", "type": "number", "constraints": { "min": 0, "max": 1000000 } }
+    ]
+  },
+  "defaultRules": {
+    "transaction_id": { "generate": "faker_uuid" },
+    "account_id": { "generate": "sequential", "parameters": { "prefix": "ACC", "padLength": 8 } },
+    "timestamp": { "generate": "faker_date" },
+    "amount": { "distribution": "lognormal", "mu": 3.5, "sigma": 1.2 },
+    "merchant_name": { "generate": "faker_company" },
+    "country": { "generate": "faker_country" },
+    "is_online": { "generate": "faker_boolean" },
+    "is_flagged": { "generate": "faker_boolean" },
+    "risk_score": { "distribution": "uniform", "min": 0, "max": 0.3 },
+    "balance_after": { "distribution": "lognormal", "mu": 8, "sigma": 1.5 }
+  }
+}

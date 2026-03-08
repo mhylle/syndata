@@ -2,35 +2,393 @@
   <a routerLink="/datasets" class="back-link">← Back to Datasets</a>
 
   <div *ngIf="loading" class="loading">Loading dataset...</div>
-
   <div *ngIf="error" class="error-message">{{ error }}</div>
 
   <div *ngIf="dataset && !loading" class="dataset-info">
-    <h1>{{ dataset.name }}</h1>
+    <div class="dataset-title-row">
+      <h1>{{ dataset.name }}</h1>
+      <button class="btn-danger-outline" (click)="deleteDataset()">Delete Dataset</button>
+    </div>
     <p class="meta">Created: {{ dataset.createdAt | date:'full' }}</p>
 
+    <!-- ============ SCHEMA SECTION ============ -->
     <div class="section">
       <div class="section-header">
-        <h2>Schema Definition</h2>
-        <button *ngIf="hasAISchema()"
-                class="btn-primary"
-                (click)="openGenerateModal()"
-                title="Generate synthetic data from AI schema">
-          🚀 Generate Data
-        </button>
+        <h2>Schema Fields</h2>
+        <div class="header-actions">
+          <button *ngIf="hasGeneratableSchema()"
+                  class="btn-primary"
+                  (click)="openGenerateModal()">
+            Generate Data
+          </button>
+          <button *ngIf="!editingSchema" class="btn-secondary" (click)="startEditSchema()">
+            Edit Schema
+          </button>
+          <ng-container *ngIf="editingSchema">
+            <button class="btn-toggle" (click)="toggleJsonView()">
+              {{ showJsonView ? 'Visual Editor' : 'JSON' }}
+            </button>
+            <button class="btn-primary" (click)="saveSchema()" [disabled]="savingSchema || schemaJsonError">
+              {{ savingSchema ? 'Saving...' : 'Save' }}
+            </button>
+            <button class="btn-cancel" (click)="cancelEditSchema()">Cancel</button>
+          </ng-container>
+        </div>
       </div>
-      <pre class="schema-display">{{ dataset.schemaDefinition | json }}</pre>
+
+      <!-- READ-ONLY VIEW (not editing) -->
+      <ng-container *ngIf="!editingSchema">
+        <div *ngIf="!hasSchemaContent()" class="empty">
+          <p>No schema defined yet. Click "Edit Schema" to add fields.</p>
+        </div>
+        <div *ngIf="hasSchemaContent()" class="fields-table">
+          <div class="fields-header">
+            <span class="col-name">Name</span>
+            <span class="col-type">Type</span>
+            <span class="col-details">Details</span>
+          </div>
+          <div *ngFor="let field of schemaFields" class="field-row">
+            <span class="col-name field-name">{{ field.name }}</span>
+            <span class="col-type"><span class="type-badge">{{ field.type }}</span></span>
+            <span class="col-details field-details">{{ getFieldSummary(field) }}</span>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- EDIT: VISUAL EDITOR -->
+      <ng-container *ngIf="editingSchema && !showJsonView">
+        <div class="fields-table editable">
+          <div class="fields-header">
+            <span class="col-name">Name</span>
+            <span class="col-type">Type</span>
+            <span class="col-details">Details</span>
+            <span class="col-actions">Actions</span>
+          </div>
+
+          <ng-container *ngFor="let field of schemaFields; let i = index">
+            <!-- Display row -->
+            <div *ngIf="editingFieldIndex !== i" class="field-row">
+              <span class="col-name field-name">{{ field.name }}</span>
+              <span class="col-type"><span class="type-badge">{{ field.type }}</span></span>
+              <span class="col-details field-details">{{ getFieldSummary(field) }}</span>
+              <span class="col-actions">
+                <button class="btn-icon" (click)="startEditField(i)" title="Edit">&#9998;</button>
+                <button class="btn-icon" (click)="moveField(i, -1)" title="Move up" [disabled]="i === 0">&#9650;</button>
+                <button class="btn-icon" (click)="moveField(i, 1)" title="Move down" [disabled]="i === schemaFields.length - 1">&#9660;</button>
+                <button class="btn-icon btn-icon-danger" (click)="removeField(i)" title="Remove">&#10005;</button>
+              </span>
+            </div>
+
+            <!-- Inline edit row -->
+            <div *ngIf="editingFieldIndex === i" class="field-edit-form">
+              <div class="edit-form-row">
+                <div class="form-group">
+                  <label>Name</label>
+                  <input type="text" [(ngModel)]="editField.name" placeholder="field_name">
+                </div>
+                <div class="form-group">
+                  <label>Type</label>
+                  <select [(ngModel)]="editField.type">
+                    <option *ngFor="let t of fieldTypes" [value]="t">{{ t }}</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Type-specific options -->
+              <div class="edit-form-row" *ngIf="isNumericType(editField.type)">
+                <div class="form-group">
+                  <label>Min</label>
+                  <input type="number" [(ngModel)]="editField.min" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Max</label>
+                  <input type="number" [(ngModel)]="editField.max" placeholder="100">
+                </div>
+              </div>
+              <div class="edit-form-row" *ngIf="editField.type === 'enum'">
+                <div class="form-group full-width">
+                  <label>Values (comma-separated)</label>
+                  <input type="text" [(ngModel)]="editFieldEnumValues" placeholder="Male, Female, Other">
+                </div>
+              </div>
+              <div class="edit-form-row">
+                <div class="form-group">
+                  <label>Generator</label>
+                  <select [(ngModel)]="editField.generator">
+                    <option value="">Default (type-based)</option>
+                    <option value="faker">Faker</option>
+                    <option value="llm">LLM (AI-generated)</option>
+                  </select>
+                </div>
+                <div class="form-group" *ngIf="editField.generator !== 'llm'">
+                  <label>Faker Path</label>
+                  <input type="text" [(ngModel)]="editField.faker" placeholder="e.g. person.fullName">
+                </div>
+              </div>
+              <div class="edit-form-row">
+                <div class="form-group" [class.full-width]="editField.generator === 'llm'">
+                  <label>Description{{ editField.generator === 'llm' ? ' (used as LLM context)' : '' }}</label>
+                  <input type="text" [(ngModel)]="editField.description" placeholder="What this field represents">
+                </div>
+              </div>
+              <!-- LLM Options -->
+              <ng-container *ngIf="editField.generator === 'llm'">
+                <div class="edit-form-row">
+                  <div class="form-group full-width">
+                    <label>Prompt (optional - use {{'{{fieldName}}'}} for context)</label>
+                    <textarea [(ngModel)]="editField.prompt" rows="3"
+                      [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+                  </div>
+                </div>
+                <div class="llm-options-section">
+                  <div class="llm-options-header">LLM Options</div>
+                  <div class="edit-form-row">
+                    <div class="form-group">
+                      <label>Output Format</label>
+                      <select [(ngModel)]="ensureLlmOptions(editField).outputFormat">
+                        <option *ngFor="let fmt of outputFormats" [value]="fmt.value">{{ fmt.label }}</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Temperature (creativity)</label>
+                      <div class="slider-with-value">
+                        <input type="range" min="0" max="10" step="1"
+                          [ngModel]="(ensureLlmOptions(editField).temperature ?? 0.8) * 10"
+                          (ngModelChange)="ensureLlmOptions(editField).temperature = $event / 10">
+                        <span class="slider-value">{{ (ensureLlmOptions(editField).temperature ?? 0.8) | number:'1.1-1' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="edit-form-row" *ngIf="ensureLlmOptions(editField).outputFormat === 'custom'">
+                    <div class="form-group full-width">
+                      <label>Custom Format Instructions</label>
+                      <textarea [(ngModel)]="ensureLlmOptions(editField).customFormat" rows="2"
+                        placeholder="e.g. Return a JSON object with keys: systolic, diastolic, pulse. Values should be integers."></textarea>
+                    </div>
+                  </div>
+                  <div class="edit-form-row" *ngIf="ensureLlmOptions(editField).outputFormat === 'structured'">
+                    <div class="form-group full-width">
+                      <label>Keys (comma-separated — specifies which key: value pairs to output)</label>
+                      <input type="text" [(ngModel)]="ensureLlmOptions(editField).structuredKeys"
+                        placeholder="e.g. systolic, diastolic, pulse, rhythm">
+                    </div>
+                  </div>
+                  <div class="edit-form-row">
+                    <div class="form-group">
+                      <label>Max Length (tokens)</label>
+                      <input type="number" [(ngModel)]="ensureLlmOptions(editField).maxLength" placeholder="300" min="10" max="2000">
+                    </div>
+                    <div class="form-group">
+                      <label>Constraints</label>
+                      <input type="text" [(ngModel)]="ensureLlmOptions(editField).constraints"
+                        placeholder="e.g. No markdown, use medical terminology">
+                    </div>
+                  </div>
+                  <div class="examples-section">
+                    <label>Examples (few-shot guidance)</label>
+                    <div *ngFor="let ex of ensureLlmOptions(editField).examples; let ei = index; trackBy: trackByIndex" class="example-row">
+                      <textarea [(ngModel)]="ensureLlmOptions(editField).examples![ei]" rows="2"
+                        placeholder="Example output for this field"></textarea>
+                      <button class="btn-icon btn-icon-danger" (click)="removeExample(editField, ei)" title="Remove">&times;</button>
+                    </div>
+                    <button class="btn-add-example" (click)="addExample(editField)">+ Add Example</button>
+                  </div>
+                </div>
+              </ng-container>
+              <div class="edit-form-actions">
+                <button class="btn-primary btn-sm" (click)="confirmEditField()" [disabled]="!editField.name?.trim()">Apply</button>
+                <button class="btn-cancel btn-sm" (click)="cancelEditField()">Cancel</button>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Add field form -->
+        <div *ngIf="showAddField" class="field-edit-form add-field-form">
+          <div class="form-title">New Field</div>
+          <div class="edit-form-row">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" [(ngModel)]="newField.name" placeholder="field_name">
+            </div>
+            <div class="form-group">
+              <label>Type</label>
+              <select [(ngModel)]="newField.type">
+                <option *ngFor="let t of fieldTypes" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="edit-form-row" *ngIf="isNumericType(newField.type)">
+            <div class="form-group">
+              <label>Min</label>
+              <input type="number" [(ngModel)]="newField.min" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Max</label>
+              <input type="number" [(ngModel)]="newField.max" placeholder="100">
+            </div>
+          </div>
+          <div class="edit-form-row" *ngIf="newField.type === 'enum'">
+            <div class="form-group full-width">
+              <label>Values (comma-separated)</label>
+              <input type="text" [(ngModel)]="newFieldEnumValues" placeholder="Male, Female, Other">
+            </div>
+          </div>
+          <div class="edit-form-row">
+            <div class="form-group">
+              <label>Generator</label>
+              <select [(ngModel)]="newField.generator">
+                <option value="">Default (type-based)</option>
+                <option value="faker">Faker</option>
+                <option value="llm">LLM (AI-generated)</option>
+              </select>
+            </div>
+            <div class="form-group" *ngIf="newField.generator !== 'llm'">
+              <label>Faker Path</label>
+              <input type="text" [(ngModel)]="newField.faker" placeholder="e.g. person.fullName">
+            </div>
+          </div>
+          <div class="edit-form-row">
+            <div class="form-group" [class.full-width]="newField.generator === 'llm'">
+              <label>Description{{ newField.generator === 'llm' ? ' (used as LLM context)' : '' }}</label>
+              <input type="text" [(ngModel)]="newField.description" placeholder="What this field represents">
+            </div>
+          </div>
+          <!-- LLM Options -->
+          <ng-container *ngIf="newField.generator === 'llm'">
+            <div class="edit-form-row">
+              <div class="form-group full-width">
+                <label>Prompt (optional - use {{'{{fieldName}}'}} for context)</label>
+                <textarea [(ngModel)]="newField.prompt" rows="3"
+                  [placeholder]="'e.g. Generate a clinical assessment for a {{age}} year old {{gender}} patient diagnosed with {{diagnosis}}'"></textarea>
+              </div>
+            </div>
+            <div class="llm-options-section">
+              <div class="llm-options-header">LLM Options</div>
+              <div class="edit-form-row">
+                <div class="form-group">
+                  <label>Output Format</label>
+                  <select [(ngModel)]="ensureLlmOptions(newField).outputFormat">
+                    <option *ngFor="let fmt of outputFormats" [value]="fmt.value">{{ fmt.label }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Temperature (creativity)</label>
+                  <div class="slider-with-value">
+                    <input type="range" min="0" max="10" step="1"
+                      [ngModel]="(ensureLlmOptions(newField).temperature ?? 0.8) * 10"
+                      (ngModelChange)="ensureLlmOptions(newField).temperature = $event / 10">
+                    <span class="slider-value">{{ (ensureLlmOptions(newField).temperature ?? 0.8) | number:'1.1-1' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="edit-form-row" *ngIf="ensureLlmOptions(newField).outputFormat === 'custom'">
+                <div class="form-group full-width">
+                  <label>Custom Format Instructions</label>
+                  <textarea [(ngModel)]="ensureLlmOptions(newField).customFormat" rows="2"
+                    placeholder="e.g. Return a JSON object with keys: systolic, diastolic, pulse. Values should be integers."></textarea>
+                </div>
+              </div>
+              <div class="edit-form-row" *ngIf="ensureLlmOptions(newField).outputFormat === 'structured'">
+                <div class="form-group full-width">
+                  <label>Keys (comma-separated — specifies which key: value pairs to output)</label>
+                  <input type="text" [(ngModel)]="ensureLlmOptions(newField).structuredKeys"
+                    placeholder="e.g. systolic, diastolic, pulse, rhythm">
+                </div>
+              </div>
+              <div class="edit-form-row">
+                <div class="form-group">
+                  <label>Max Length (tokens)</label>
+                  <input type="number" [(ngModel)]="ensureLlmOptions(newField).maxLength" placeholder="300" min="10" max="2000">
+                </div>
+                <div class="form-group">
+                  <label>Constraints</label>
+                  <input type="text" [(ngModel)]="ensureLlmOptions(newField).constraints"
+                    placeholder="e.g. No markdown, use medical terminology">
+                </div>
+              </div>
+              <div class="examples-section">
+                <label>Examples (few-shot guidance)</label>
+                <div *ngFor="let ex of ensureLlmOptions(newField).examples; let ei = index; trackBy: trackByIndex" class="example-row">
+                  <textarea [(ngModel)]="ensureLlmOptions(newField).examples![ei]" rows="2"
+                    placeholder="Example output for this field"></textarea>
+                  <button class="btn-icon btn-icon-danger" (click)="removeExample(newField, ei)" title="Remove">&times;</button>
+                </div>
+                <button class="btn-add-example" (click)="addExample(newField)">+ Add Example</button>
+              </div>
+            </div>
+          </ng-container>
+          <div class="edit-form-actions">
+            <button class="btn-primary btn-sm" (click)="confirmAddField()" [disabled]="!newField.name?.trim()">Add Field</button>
+            <button class="btn-cancel btn-sm" (click)="cancelAddField()">Cancel</button>
+          </div>
+        </div>
+
+        <button *ngIf="!showAddField" class="btn-add-field" (click)="openAddField()">+ Add Field</button>
+      </ng-container>
+
+      <!-- EDIT: JSON VIEW -->
+      <div *ngIf="editingSchema && showJsonView" class="schema-editor">
+        <div *ngIf="schemaJsonError" class="schema-error">{{ schemaJsonError }}</div>
+        <textarea
+          class="schema-textarea"
+          [(ngModel)]="schemaJsonText"
+          (ngModelChange)="validateJson()"
+          rows="18"
+          placeholder='{ "fields": [...] }'></textarea>
+      </div>
     </div>
 
+    <!-- ============ ELEMENTS SECTION ============ -->
     <div class="section">
-      <h2>Elements ({{ elements.length }})</h2>
-      <div *ngIf="elements.length === 0" class="empty">
-        <p>No elements defined yet.</p>
+      <div class="section-header">
+        <h2>Elements ({{ elements.length }})</h2>
+        <button class="btn-secondary" (click)="toggleAddElement()">
+          {{ showAddElement ? 'Cancel' : '+ Add Element' }}
+        </button>
+      </div>
+
+      <!-- Add Element Form -->
+      <div *ngIf="showAddElement" class="field-edit-form add-field-form">
+        <div class="form-title">New Element</div>
+        <div class="edit-form-row">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" [(ngModel)]="newElement.name" placeholder="e.g. patient_name">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select [(ngModel)]="newElement.type">
+              <option *ngFor="let t of fieldTypes" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="edit-form-row">
+          <div class="form-group">
+            <label>Faker Generator (optional)</label>
+            <input type="text" [(ngModel)]="newElement.faker" placeholder="e.g. person.fullName, date.past">
+          </div>
+          <div class="form-group">
+            <label>Description (optional)</label>
+            <input type="text" [(ngModel)]="newElement.description" placeholder="What this element represents">
+          </div>
+        </div>
+        <div class="edit-form-actions">
+          <button class="btn-primary btn-sm" (click)="addElement()" [disabled]="!newElement.name?.trim()">Add Element</button>
+        </div>
+      </div>
+
+      <div *ngIf="elements.length === 0 && !showAddElement" class="empty">
+        <p>No elements defined yet. Click "+ Add Element" to get started.</p>
       </div>
       <div *ngIf="elements.length > 0" class="elements-list">
-        <div *ngFor="let element of elements" class="element-item">
-          <strong>{{ element.name }}</strong>
-          <span class="type-badge">{{ element.type }}</span>
+        <div *ngFor="let element of elements" class="element-card">
+          <div class="element-header">
+            <strong>{{ element.name }}</strong>
+            <span class="type-badge">{{ element.type }}</span>
+          </div>
+          <div *ngIf="getElementDefSummary(element).length > 0" class="element-props">
+            <span *ngFor="let item of getElementDefSummary(element)" class="element-prop">{{ item }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -42,6 +400,7 @@
     [projectId]="projectId"
     [datasetId]="datasetId"
     [datasetName]="dataset.name"
+    [isAISchema]="hasAISchema()"
     (close)="closeGenerateModal()"
     (generationComplete)="onGenerationComplete()">
   </app-data-generation-config>

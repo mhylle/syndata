@@ -20,6 +20,9 @@ export class GenerationJobEntity {
   @Column({ type: 'jsonb', nullable: false })
   config: any;
 
+  @Column({ type: 'integer', nullable: false, default: 0 })
+  progress: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

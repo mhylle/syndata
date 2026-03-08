@@ -1,4 +1,5 @@
 export { GenerateDto } from './generate.dto';
+export { ExportDto } from './export.dto';
 export {
   GenerateSchemaDto,
   RefineSchemaDto,

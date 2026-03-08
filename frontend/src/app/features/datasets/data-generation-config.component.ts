@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/services/api.service';
@@ -10,10 +10,11 @@ import { ApiService } from '../../shared/services/api.service';
   templateUrl: './data-generation-config.component.html',
   styleUrls: ['./data-generation-config.component.scss']
 })
-export class DataGenerationConfigComponent {
+export class DataGenerationConfigComponent implements OnDestroy {
   @Input() projectId: string = '';
   @Input() datasetId: string = '';
   @Input() datasetName: string = '';
+  @Input() isAISchema: boolean = false;
   @Output() close = new EventEmitter<void>();
   @Output() generationComplete = new EventEmitter<void>();
 
@@ -21,13 +22,23 @@ export class DataGenerationConfigComponent {
   error: string | null = null;
   success: string | null = null;
 
+  // Job tracking
+  jobId: string | null = null;
+  jobStatus: string | null = null;
+  jobProgress = 0;
+  private pollTimer: any = null;
+
   // Generation configuration
   count = 100;
-  minComponentConfidence = 60; // 0-100 for UI slider (will convert to 0-1)
+  minComponentConfidence = 60;
   minRuleConfidence = 50;
   minFieldConfidence = 40;
 
   constructor(private apiService: ApiService) {}
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
 
   generateData(): void {
     if (this.count < 1 || this.count > 10000) {
@@ -38,34 +49,74 @@ export class DataGenerationConfigComponent {
     this.loading = true;
     this.error = null;
     this.success = null;
+    this.jobId = null;
+    this.jobStatus = null;
+    this.jobProgress = 0;
 
     this.apiService.generateFromSchema(
       this.projectId,
       this.datasetId,
       {
         count: this.count,
-        minComponentConfidence: this.minComponentConfidence / 100,
-        minRuleConfidence: this.minRuleConfidence / 100,
-        minFieldConfidence: this.minFieldConfidence / 100,
+        minComponentConfidence: this.isAISchema ? this.minComponentConfidence / 100 : undefined,
+        minRuleConfidence: this.isAISchema ? this.minRuleConfidence / 100 : undefined,
+        minFieldConfidence: this.isAISchema ? this.minFieldConfidence / 100 : undefined,
       }
     ).subscribe({
       next: (response) => {
-        this.success = `Generation job created! Job ID: ${response.jobId}. Generating ${response.count} records...`;
-        this.loading = false;
-        // Wait 2 seconds then close and notify parent
-        setTimeout(() => {
-          this.generationComplete.emit();
-        }, 2000);
+        this.jobId = response.jobId;
+        this.jobStatus = 'running';
+        this.success = `Generation started — ${response.count} records`;
+        this.startPolling();
       },
       error: (err) => {
-        this.error = 'Failed to start generation job. Please try again.';
+        this.error = err.error?.message || 'Failed to start generation job. Please try again.';
         this.loading = false;
         console.error(err);
       }
     });
   }
 
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => this.pollJobStatus(), 2000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  private pollJobStatus(): void {
+    if (!this.jobId) return;
+
+    this.apiService.getJob(this.projectId, this.jobId).subscribe({
+      next: (job) => {
+        this.jobStatus = job.status;
+        this.jobProgress = job.progress || 0;
+
+        if (job.status === 'completed') {
+          this.stopPolling();
+          this.loading = false;
+          this.success = `Done! Generated ${job.count} records.`;
+          setTimeout(() => this.generationComplete.emit(), 1500);
+        } else if (job.status === 'failed') {
+          this.stopPolling();
+          this.loading = false;
+          this.error = 'Generation failed. Check backend logs for details.';
+          this.success = null;
+        }
+      },
+      error: () => {
+        // Silently continue polling on transient errors
+      }
+    });
+  }
+
   onClose(): void {
+    this.stopPolling();
     this.close.emit();
   }
 }

@@ -1,10 +1,14 @@
 // backend/src/features/generation/controllers/generation.controller.ts
-import { Controller, Post, Get, Body, Param, Query, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Delete, HttpCode, HttpStatus, Res, Header } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Response } from 'express';
 import { GenerationService } from '../services/generation.service';
+import { ExportService } from '../services/export.service';
+import { TemplateService } from '../services/template.service';
 import { SchemaGeneratorService } from '../services/schema-generator.service';
 import { SchemaParserService } from '../services/schema-parser.service';
 import { GenerateDto } from '../dto/generate.dto';
+import { ExportDto } from '../dto/export.dto';
 import {
   GenerateSchemaDto,
   RefineSchemaDto,
@@ -15,15 +19,22 @@ import {
   RefineSchemaResponseDto
 } from '../dto/schema-response.dto';
 import { GenerateFromSchemaDto } from '../dto/generate-from-schema.dto';
+import { DatasetService } from '../../datasets/services/dataset.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('Generation')
 @Controller('projects/:projectId')
 export class GenerationController {
+  // In-memory store for conversation descriptions (keyed by conversationId)
+  private conversationDescriptions = new Map<string, string>();
+
   constructor(
     private readonly generationService: GenerationService,
+    private readonly exportService: ExportService,
+    private readonly templateService: TemplateService,
     private readonly schemaGeneratorService: SchemaGeneratorService,
     private readonly schemaParserService: SchemaParserService,
+    private readonly datasetService: DatasetService,
   ) {}
 
   @Post('generate')
@@ -104,6 +115,27 @@ export class GenerationController {
     return this.generationService.getRecord(recordId);
   }
 
+  @Post('export')
+  @ApiOperation({ summary: 'Export generated records as CSV or JSON' })
+  @ApiResponse({ status: 200, description: 'Export file returned' })
+  @ApiParam({ name: 'projectId', description: 'Project ID' })
+  async exportRecords(
+    @Param('projectId') projectId: string,
+    @Body() dto: ExportDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.exportService.exportRecords(projectId, {
+      format: dto.format,
+      jobIds: dto.jobIds,
+      includeAnnotations: dto.includeAnnotations,
+      fields: dto.fields,
+    });
+
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.send(result.content);
+  }
+
   // Schema Generation Endpoints
 
   @Post('schemas/generate')
@@ -137,6 +169,9 @@ export class GenerationController {
       requestId,
     );
 
+    // Store description for later retrieval during refinement
+    this.conversationDescriptions.set(result.conversationId, dto.description);
+
     return result;
   }
 
@@ -163,10 +198,8 @@ export class GenerationController {
   ): Promise<RefineSchemaResponseDto> {
     const requestId = uuidv4();
 
-    // Get original description from conversation context
-    // For now, we'll need to pass it through or store it
-    // This is a simplified version - in production you'd retrieve from conversation store
-    const description = 'Schema refinement';
+    // Retrieve original description from conversation store
+    const description = this.conversationDescriptions.get(conversationId) || 'Schema refinement';
 
     const result = await this.schemaGeneratorService.generateSchema(
       description,
@@ -174,6 +207,9 @@ export class GenerationController {
       conversationId,
       requestId,
     );
+
+    // Clean up stored description
+    this.conversationDescriptions.delete(conversationId);
 
     return result;
   }
@@ -202,13 +238,14 @@ export class GenerationController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateDatasetFromSchemaDto,
   ): Promise<{ datasetId: string; message: string }> {
-    // TODO: Implement dataset creation with schema relationship
-    // This will be implemented in a future phase
-    const datasetId = uuidv4();
+    const dataset = await this.datasetService.create(projectId, {
+      name: dto.name,
+      schema: dto.schema,
+    });
 
     return {
-      datasetId,
-      message: 'Dataset creation from schema - to be implemented in Phase 4',
+      datasetId: dataset.id,
+      message: `Dataset "${dto.name}" created successfully`,
     };
   }
 

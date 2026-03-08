@@ -106,6 +106,23 @@ export class GenerationController {
     return this.generationService.cancelJob(jobId);
   }
 
+  @Post('jobs/:jobId/resume')
+  @ApiOperation({ summary: 'Resume a cancelled or failed generation job' })
+  @ApiResponse({ status: 201, description: 'Generation resumed successfully' })
+  @ApiResponse({ status: 400, description: 'Job cannot be resumed' })
+  resumeJob(@Param('jobId') jobId: string) {
+    return this.generationService.resumeJob(jobId);
+  }
+
+  @Delete('jobs/:jobId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a generation job and all its records' })
+  @ApiResponse({ status: 200, description: 'Job and records deleted' })
+  @ApiResponse({ status: 400, description: 'Cannot delete running job' })
+  deleteJob(@Param('jobId') jobId: string) {
+    return this.generationService.deleteJob(jobId);
+  }
+
   @Get('records')
   @ApiOperation({ summary: 'Get generated records' })
   getRecords(

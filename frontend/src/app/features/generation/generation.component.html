@@ -48,18 +48,35 @@
         </div>
         <div class="job-details">
           <p>Records: <strong>{{ job.count }}</strong></p>
+          <p *ngIf="job.progress !== undefined && job.progress < 100 && job.status !== 'completed'">
+            Progress: <strong>{{ job.progress }}%</strong>
+          </p>
           <p>Created: {{ job.createdAt | date:'short' }}</p>
-          <p *ngIf="job.completedAt">Completed: {{ job.completedAt | date:'short' }}</p>
+          <p *ngIf="job.completedAt && job.status !== 'running'">
+            {{ job.status === 'cancelled' ? 'Cancelled' : job.status === 'failed' ? 'Failed' : 'Completed' }}: {{ job.completedAt | date:'short' }}
+          </p>
         </div>
         <div class="job-actions">
           <button
-            *ngIf="job.status === 'completed'"
+            *ngIf="job.status === 'completed' || job.status === 'cancelled'"
             (click)="viewRecords(job)"
             class="btn btn-view">
-            👁️ View Records
+            View Records
           </button>
-          <span *ngIf="job.status !== 'completed'" class="btn-disabled">
-            👁️ View Records ({{ job.status }})
+          <button
+            *ngIf="job.status === 'cancelled' || job.status === 'failed'"
+            (click)="resumeJob(job)"
+            class="btn btn-resume">
+            Resume
+          </button>
+          <button
+            *ngIf="job.status !== 'running'"
+            (click)="deleteJob(job)"
+            class="btn btn-delete">
+            Delete
+          </button>
+          <span *ngIf="job.status === 'running'" class="btn-disabled">
+            Running... {{ job.progress || 0 }}%
           </span>
         </div>
       </div>

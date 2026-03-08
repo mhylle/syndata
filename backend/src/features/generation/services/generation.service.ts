@@ -147,6 +147,7 @@ export class GenerationService {
     job: GenerationJobEntity,
     schema: any,
     rules?: any,
+    offset: number = 0,
   ): Promise<void> {
     const BATCH_SIZE = 100;
 
@@ -154,7 +155,7 @@ export class GenerationService {
       const recordBatch: RecordEntity[] = [];
       const fieldValueBatch: FieldValueEntity[] = [];
 
-      for (let i = 0; i < job.count; i++) {
+      for (let i = offset; i < job.count; i++) {
         // Check for cancellation
         if (this.isJobCancelled(job.id)) {
           this.logger.log(`Job ${job.id} cancelled at record ${i + 1}/${job.count}`);
@@ -265,15 +266,16 @@ export class GenerationService {
     job: GenerationJobEntity,
     schema: any,
     generationFilters?: any,
+    offset: number = 0,
   ): Promise<void> {
     const BATCH_SIZE = 50;
 
     try {
-      this.logger.log(`[${job.projectId}] Starting generation of ${job.count} records from AI schema`);
+      this.logger.log(`[${job.projectId}] ${offset > 0 ? 'Resuming' : 'Starting'} generation of ${job.count} records from AI schema (offset: ${offset})`);
 
       const batch: RecordEntity[] = [];
 
-      for (let i = 0; i < job.count; i++) {
+      for (let i = offset; i < job.count; i++) {
         // Check for cancellation
         if (this.isJobCancelled(job.id)) {
           this.logger.log(`[${job.projectId}] Job ${job.id} cancelled at record ${i + 1}/${job.count}`);
@@ -346,6 +348,93 @@ export class GenerationService {
 
   private isJobCancelled(jobId: string): boolean {
     return this.cancelledJobs.has(jobId);
+  }
+
+  async resumeJob(jobId: string): Promise<{ jobId: string; message: string; remaining: number }> {
+    const job = await this.getJob(jobId);
+
+    if (job.status !== 'cancelled' && job.status !== 'failed') {
+      throw new BadRequestException(`Can only resume cancelled or failed jobs (current: ${job.status})`);
+    }
+
+    // Count existing records for this job
+    const existingCount = await this.recordRepository.count({
+      where: { generationJobId: jobId },
+    });
+
+    const remaining = job.count - existingCount;
+    if (remaining <= 0) {
+      throw new BadRequestException(`Job already has ${existingCount}/${job.count} records — nothing to resume`);
+    }
+
+    this.logger.log(`Resuming job ${jobId}: ${existingCount} existing, ${remaining} remaining`);
+
+    // Reset job to running
+    job.status = 'running';
+    job.progress = Math.round((existingCount / job.count) * 100);
+    await this.jobRepository.save(job);
+
+    // Retrieve dataset for schema
+    const dataset = await this.datasetService.findOne(job.datasetId);
+    const schema = dataset.schemaDefinition;
+    const isAISchema = !!(schema.schemaMetadata && schema.rootStructure);
+
+    // Run generation for remaining records
+    const runner = isAISchema
+      ? this.runAISchemaGeneration(job, schema, job.config?.generationFilters, existingCount)
+      : this.runGeneration(job, schema, job.config?.rules, existingCount);
+
+    runner.catch((error) => {
+      this.logger.error(`Resume generation failed for job ${jobId}: ${error.message}`);
+      job.status = 'failed';
+      this.jobRepository.save(job);
+    });
+
+    return {
+      jobId: job.id,
+      message: `Resumed generation: ${remaining} records remaining (${existingCount} already generated)`,
+      remaining,
+    };
+  }
+
+  async deleteJob(jobId: string): Promise<{ message: string }> {
+    const job = await this.getJob(jobId);
+
+    if (job.status === 'running') {
+      throw new BadRequestException('Cannot delete a running job — cancel it first');
+    }
+
+    // Delete field values for all records of this job
+    const records = await this.recordRepository.find({
+      where: { generationJobId: jobId },
+      select: ['id'],
+    });
+
+    if (records.length > 0) {
+      const recordIds = records.map(r => r.id);
+      // Delete field values in batches
+      for (let i = 0; i < recordIds.length; i += 500) {
+        const batch = recordIds.slice(i, i + 500);
+        await this.fieldValueRepository
+          .createQueryBuilder()
+          .delete()
+          .where('recordId IN (:...ids)', { ids: batch })
+          .execute();
+      }
+
+      // Delete records
+      await this.recordRepository
+        .createQueryBuilder()
+        .delete()
+        .where('generationJobId = :jobId', { jobId })
+        .execute();
+    }
+
+    // Delete the job itself
+    await this.jobRepository.remove(job);
+
+    this.logger.log(`Deleted job ${jobId} and ${records.length} records`);
+    return { message: `Deleted job and ${records.length} records` };
   }
 
   async getJobs(projectId: string): Promise<GenerationJobEntity[]> {

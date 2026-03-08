@@ -112,18 +112,50 @@ export class GenerationComponent implements OnInit {
       'pending': '#ffd700',
       'running': '#667eea',
       'completed': '#28a745',
-      'failed': '#dc3545'
+      'failed': '#dc3545',
+      'cancelled': '#f59e0b'
     };
     return colors[status] || '#999';
   }
 
   viewRecords(job: GenerationJob): void {
-    if (job.status !== 'completed') {
-      this.error = 'Can only view records for completed jobs';
+    if (job.status !== 'completed' && job.status !== 'cancelled') {
+      this.error = 'Can only view records for completed or cancelled jobs';
       return;
     }
     this.selectedJobForRecords = job;
     this.viewingRecords = true;
+  }
+
+  resumeJob(job: GenerationJob): void {
+    this.error = null;
+    this.message = null;
+    this.apiService.resumeJob(this.selectedProjectId, job.id).subscribe({
+      next: (res) => {
+        this.message = res.message;
+        this.loadGenerationJobs();
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Failed to resume job';
+      }
+    });
+  }
+
+  deleteJob(job: GenerationJob): void {
+    if (!confirm(`Delete this job and all its records? This cannot be undone.`)) {
+      return;
+    }
+    this.error = null;
+    this.message = null;
+    this.apiService.deleteJob(this.selectedProjectId, job.id).subscribe({
+      next: (res) => {
+        this.message = res.message;
+        this.generationJobs = this.generationJobs.filter(j => j.id !== job.id);
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Failed to delete job';
+      }
+    });
   }
 
   closeRecordsViewer(): void {

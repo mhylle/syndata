@@ -29,8 +29,9 @@ export interface GenerationJob {
   id: string;
   projectId: string;
   datasetId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   count: number;
+  progress?: number;
   config: any;
   createdAt: Date;
   completedAt?: Date;

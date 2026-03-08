@@ -191,6 +191,19 @@ export class ApiService {
     );
   }
 
+  resumeJob(projectId: string, jobId: string): Observable<{ jobId: string; message: string; remaining: number }> {
+    return this.http.post<{ jobId: string; message: string; remaining: number }>(
+      `${this.baseUrl}/projects/${projectId}/jobs/${jobId}/resume`,
+      {}
+    );
+  }
+
+  deleteJob(projectId: string, jobId: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.baseUrl}/projects/${projectId}/jobs/${jobId}`
+    );
+  }
+
   // ===== AI PROMPT IMPROVEMENT =====
 
   improvePrompt(

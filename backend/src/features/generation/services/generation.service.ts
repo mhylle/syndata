@@ -252,15 +252,25 @@ export class GenerationService {
       // Build system prompt for LLM fields (if any)
       let systemPrompt = '';
       if (llmFields.length > 0) {
-        const fieldDescriptions = llmFields.map(f => `"${f.targetField}": ${f.prompt || 'Generate an appropriate value'}`).join('\n');
+        // Strip markdown formatting from per-field prompts to avoid confusing JSON output
+        const stripMarkdown = (text: string) => text
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/#{1,6}\s*/g, '')
+          .replace(/```[^`]*```/g, '');
+        const fieldDescriptions = llmFields.map(f => {
+          const prompt = f.prompt ? stripMarkdown(f.prompt) : 'Generate an appropriate value';
+          return `"${f.targetField}": ${prompt}`;
+        }).join('\n');
         systemPrompt = [
           globalPrompt || 'You are a data transformation assistant.',
           '',
           `Generate values for these fields based on the source record:`,
           fieldDescriptions,
           '',
-          `You MUST respond with valid JSON containing exactly these keys: ${JSON.stringify(llmFieldNames)}`,
-          'Return ONLY the JSON object, no explanation, no markdown code fences.',
+          `CRITICAL: You MUST respond with ONLY a valid JSON object. No markdown, no explanation, no code fences.`,
+          `The JSON object must contain exactly these keys: ${JSON.stringify(llmFieldNames)}`,
+          `Each value must be a string. Example: ${JSON.stringify(Object.fromEntries(llmFieldNames.map(k => [k, '...'])))}`,
         ].join('\n');
       }
 
@@ -421,7 +431,7 @@ export class GenerationService {
         return parsed;
       }
     } catch {
-      // Try to extract JSON from the response
+      // Try to extract JSON from the response — find the outermost braces
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
@@ -429,6 +439,12 @@ export class GenerationService {
         } catch {
           // Fall through
         }
+      }
+
+      // Last resort: if response is plaintext and we expect a single field, wrap it
+      if (expectedFields.length === 1) {
+        this.logger.warn(`LLM returned plaintext for single field "${expectedFields[0]}", wrapping as value`);
+        return { [expectedFields[0]]: cleaned };
       }
     }
 
